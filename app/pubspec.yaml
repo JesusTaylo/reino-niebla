@@ -1,7 +1,7 @@
 name: reino_niebla
 description: "Reino de Niebla - juego fitness de exploración con GPS."
 publish_to: 'none'
-version: 0.1.1+2
+version: 0.1.2+3
 
 environment:
   sdk: '>=3.5.0 <4.0.0'

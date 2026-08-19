@@ -1,5 +1,3 @@
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -77,10 +75,11 @@ class _FogPainter extends CustomPainter {
     canvas.saveLayer(rect, Paint());
     canvas.drawRect(rect, Paint()..color = fogColor);
 
+    // Sin MaskFilter: el desenfoque + BlendMode.clear falla en algunos
+    // renderizadores Android (Impeller) y la niebla queda sólida.
     final clear = Paint()
       ..blendMode = BlendMode.clear
-      ..maskFilter =
-          ui.MaskFilter.blur(ui.BlurStyle.normal, pixRadius * 0.45);
+      ..isAntiAlias = true;
 
     // Solo proyectamos puntos dentro (o cerca) de la pantalla.
     final bounds = camera.visibleBounds;
@@ -97,14 +96,19 @@ class _FogPainter extends CustomPainter {
       canvas.drawCircle(_project(p), pixRadius, clear);
     }
 
-    // Alrededor del jugador siempre hay una burbuja amplia de visibilidad.
+    // Alrededor del jugador siempre hay una burbuja amplia de visibilidad,
+    // con un borde suave hecho con anillos concéntricos (sin blur).
     final player = playerPosition;
     if (player != null) {
-      final playerClear = Paint()
-        ..blendMode = BlendMode.clear
-        ..maskFilter =
-            ui.MaskFilter.blur(ui.BlurStyle.normal, pixRadius * 1.1);
-      canvas.drawCircle(_project(player), pixRadius * 3.0, playerClear);
+      final p = _project(player);
+      canvas.drawCircle(p, pixRadius * 3.0, clear);
+      for (var i = 1; i <= 3; i++) {
+        final ring = Paint()
+          ..blendMode = BlendMode.clear
+          ..isAntiAlias = true
+          ..color = Colors.white.withValues(alpha: 1.0 - i * 0.25);
+        canvas.drawCircle(p, pixRadius * (3.0 + i * 0.22), ring);
+      }
     }
 
     canvas.restore();

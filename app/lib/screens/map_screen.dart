@@ -238,11 +238,13 @@ class _MapScreenState extends State<MapScreen> {
 
               // ---- Botón de seguir mi posición ----
               Positioned(
-                right: 14,
-                bottom: 180,
+                right: 12,
+                bottom: 150,
                 child: FloatingActionButton.small(
                   heroTag: 'follow',
-                  backgroundColor: _follow ? RN.gold : RN.panel,
+                  backgroundColor: _follow
+                      ? RN.gold
+                      : RN.night.withValues(alpha: 0.88),
                   foregroundColor: _follow ? RN.night : RN.parchment,
                   onPressed: () {
                     setState(() => _follow = true);
@@ -315,19 +317,21 @@ class _MapScreenState extends State<MapScreen> {
     }
 
     if (quest == null) {
-      return SizedBox(
-        width: double.infinity,
-        child: FilledButton(
-          onPressed: game.position == null ? null : _openQuestSheet,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: Text(
-              game.position == null
-                  ? 'Buscando tu posición…'
-                  : '🗺️  Nueva expedición',
-              style: const TextStyle(fontSize: 17),
-            ),
+      // Botón píldora centrado: no ocupa todo el ancho del mapa.
+      return FilledButton(
+        style: FilledButton.styleFrom(
+          padding:
+              const EdgeInsets.symmetric(horizontal: 26, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(26),
           ),
+        ),
+        onPressed: game.position == null ? null : _openQuestSheet,
+        child: Text(
+          game.position == null
+              ? 'Buscando tu posición…'
+              : '🗺️  Nueva expedición',
+          style: const TextStyle(fontSize: 15.5),
         ),
       );
     }
@@ -335,48 +339,75 @@ class _MapScreenState extends State<MapScreen> {
     final remaining =
         math.max(0.0, quest.routeMeters - quest.walkedMeters);
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(quest.name,
-                      style: fantasyTitle(16, color: RN.goldSoft)),
+    // Panel compacto y translúcido: información esencial, mapa visible.
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
+      decoration: BoxDecoration(
+        color: RN.night.withValues(alpha: 0.88),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: RN.gold.withValues(alpha: 0.35)),
+        boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 8)],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  quest.name,
+                  style: fantasyTitle(14.5, color: RN.goldSoft),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                IconButton(
-                  tooltip: 'Abandonar expedición',
-                  icon: const Icon(Icons.close, color: RN.parchmentDim),
-                  onPressed: _confirmAbandon,
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: LinearProgressIndicator(
-                value: quest.progress,
-                minHeight: 10,
-                backgroundColor: Colors.white12,
-                color: RN.gold,
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              quest.walkedMeters < 30
-                  ? '${quest.tierLabel} · ${formatKm(quest.routeMeters)} · '
-                      'ruta circular: sigue el camino dorado 🥾'
-                  : '${formatKm(quest.walkedMeters)} de '
-                      '${formatKm(quest.routeMeters)}  ·  '
-                      'faltan ${formatKm(remaining)}',
-              style: const TextStyle(fontSize: 13, color: RN.parchmentDim),
+              InkWell(
+                customBorder: const CircleBorder(),
+                onTap: _confirmAbandon,
+                child: const Padding(
+                  padding: EdgeInsets.all(4),
+                  child:
+                      Icon(Icons.close, size: 18, color: RN.parchmentDim),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: quest.progress,
+                    minHeight: 7,
+                    backgroundColor: Colors.white12,
+                    color: RN.gold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                quest.walkedMeters < 30
+                    ? '${formatKm(quest.routeMeters)} 🥾'
+                    : 'faltan ${formatKm(remaining)}',
+                style: const TextStyle(
+                    fontSize: 12,
+                    color: RN.parchment,
+                    fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(width: 6),
+            ],
+          ),
+          if (quest.walkedMeters < 30) ...[
+            const SizedBox(height: 5),
+            const Text(
+              'Ruta circular: sigue el camino dorado y vuelve al inicio',
+              style: TextStyle(fontSize: 11, color: RN.parchmentDim),
             ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -435,61 +466,79 @@ class _TopHud extends StatelessWidget {
     final equipped = {
       for (final slot in GearSlot.values) slot: controller.equippedIn(slot),
     };
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    // Píldora compacta y translúcida: tapa lo mínimo posible del mapa.
+    return Align(
+      alignment: Alignment.topCenter,
+      child: Container(
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        decoration: BoxDecoration(
+          color: RN.night.withValues(alpha: 0.88),
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: RN.gold.withValues(alpha: 0.35)),
+          boxShadow: const [
+            BoxShadow(color: Colors.black38, blurRadius: 8),
+          ],
+        ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             GestureDetector(
               onTap: () => Navigator.of(context).push(MaterialPageRoute(
                 builder: (_) => AvatarScreen(controller: controller),
               )),
               child: Container(
-                width: 44,
-                height: 44,
+                width: 34,
+                height: 34,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: RN.night,
-                  border: Border.all(color: RN.gold, width: 2),
+                  border: Border.all(color: RN.gold, width: 1.5),
                 ),
                 child: ClipOval(
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 4),
+                    padding: const EdgeInsets.only(top: 3),
                     child: AvatarView(equipped: equipped),
                   ),
                 ),
               ),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Nv ${player.level} · ${player.title}',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 13.5),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
+            const SizedBox(width: 8),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Nv ${player.level} · ${player.title}',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 12),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 3),
+                SizedBox(
+                  width: 130,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(3),
                     child: LinearProgressIndicator(
                       value: player.levelProgress,
-                      minHeight: 6,
+                      minHeight: 4,
                       backgroundColor: Colors.white12,
                       color: RN.teal,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            IconButton(
-              tooltip: 'Salón de Medallas',
-              icon: const Text('🏅', style: TextStyle(fontSize: 22)),
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+            const SizedBox(width: 4),
+            InkWell(
+              customBorder: const CircleBorder(),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(
                 builder: (_) => MedalsScreen(controller: controller),
               )),
+              child: const Padding(
+                padding: EdgeInsets.all(6),
+                child: Text('🏅', style: TextStyle(fontSize: 19)),
+              ),
             ),
           ],
         ),
