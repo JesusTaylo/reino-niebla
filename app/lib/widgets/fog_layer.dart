@@ -8,6 +8,14 @@ import '../util/geo.dart';
 /// que el jugador ya exploró.
 class FogLayer extends StatelessWidget {
   final List<LatLng> revealed;
+
+  /// Día en que cada punto fue visitado por última vez (paralelo a
+  /// [revealed]). Los puntos viejos se ven parcialmente re-cubiertos:
+  /// la Niebla regresa a lo que se deja de caminar.
+  final List<int> revealedDays;
+  final int today;
+  final int staleAfterDays;
+
   final LatLng? playerPosition;
   final double radiusMeters;
   final Color fogColor;
@@ -15,6 +23,9 @@ class FogLayer extends StatelessWidget {
   const FogLayer({
     super.key,
     required this.revealed,
+    required this.revealedDays,
+    required this.today,
+    this.staleAfterDays = 10,
     required this.playerPosition,
     this.radiusMeters = 55,
     // Niebla translúcida: el mapa sin explorar se ve oscurecido, no tapado.
@@ -30,6 +41,9 @@ class FogLayer extends StatelessWidget {
         painter: _FogPainter(
           camera: camera,
           revealed: revealed,
+          revealedDays: revealedDays,
+          today: today,
+          staleAfterDays: staleAfterDays,
           playerPosition: playerPosition,
           radiusMeters: radiusMeters,
           fogColor: fogColor,
@@ -42,6 +56,9 @@ class FogLayer extends StatelessWidget {
 class _FogPainter extends CustomPainter {
   final MapCamera camera;
   final List<LatLng> revealed;
+  final List<int> revealedDays;
+  final int today;
+  final int staleAfterDays;
   final LatLng? playerPosition;
   final double radiusMeters;
   final Color fogColor;
@@ -49,6 +66,9 @@ class _FogPainter extends CustomPainter {
   _FogPainter({
     required this.camera,
     required this.revealed,
+    required this.revealedDays,
+    required this.today,
+    required this.staleAfterDays,
     required this.playerPosition,
     required this.radiusMeters,
     required this.fogColor,
@@ -86,14 +106,22 @@ class _FogPainter extends CustomPainter {
     final margin = radiusMeters * 2.5;
     final latMargin = margin / 111320.0;
 
-    for (final p in revealed) {
+    for (var i = 0; i < revealed.length; i++) {
+      final p = revealed[i];
       if (p.latitude < bounds.south - latMargin ||
           p.latitude > bounds.north + latMargin ||
           p.longitude < bounds.west - latMargin * 2 ||
           p.longitude > bounds.east + latMargin * 2) {
         continue;
       }
-      canvas.drawCircle(_project(p), pixRadius, clear);
+      final age =
+          i < revealedDays.length ? today - revealedDays[i] : 0;
+      if (age >= staleAfterDays) {
+        // La Niebla regresa: el claro se encoge (revisitar lo restaura).
+        canvas.drawCircle(_project(p), pixRadius * 0.55, clear);
+      } else {
+        canvas.drawCircle(_project(p), pixRadius, clear);
+      }
     }
 
     // Alrededor del jugador siempre hay una burbuja amplia de visibilidad,

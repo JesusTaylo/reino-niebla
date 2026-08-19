@@ -114,6 +114,18 @@ const List<Medal> medalCatalog = [
     emoji: '🗿',
   ),
   Medal(
+    id: 'peregrino',
+    name: 'Peregrino del Reino',
+    desc: 'Activa 10 puestos de avanzada distintos.',
+    emoji: '🗼',
+  ),
+  Medal(
+    id: 'red_reino',
+    name: 'La Red del Reino',
+    desc: 'Activa 25 puestos de avanzada distintos.',
+    emoji: '🕸️',
+  ),
+  Medal(
     id: 'reunion',
     name: 'Lo que la Niebla no pudo',
     desc: 'Reúne a los que se buscaban.',

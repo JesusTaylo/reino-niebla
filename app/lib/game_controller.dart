@@ -12,6 +12,7 @@ import 'package:latlong2/latlong.dart';
 import 'models/bestiary.dart';
 import 'models/campaign.dart';
 import 'models/items.dart';
+import 'models/outposts.dart';
 import 'models/medals.dart';
 import 'models/player_state.dart';
 import 'models/quest.dart';
@@ -98,11 +99,15 @@ class GameController extends ChangeNotifier {
   LatLng? _lastTrailPoint;
   DateTime? _lastTrailTime;
 
-  /// Rejilla espacial (~50 m) para no duplicar puntos de niebla revelada.
-  final Set<String> _exploredKeys = {};
+  /// Rejilla espacial (~50 m): clave -> índice del punto en explored,
+  /// para refrescar su fecha cuando el jugador revisita la zona.
+  final Map<String, int> _exploredKeys = {};
 
   static String _gridKey(LatLng p) =>
       '${(p.latitude * 2000).round()}:${(p.longitude * 2000).round()}';
+
+  /// Días sin visitar tras los cuales la Niebla empieza a regresar.
+  static const int fogReturnDays = 10;
 
   final _rng = math.Random();
 
@@ -117,8 +122,14 @@ class GameController extends ChangeNotifier {
     final data = await Storage.load();
     player = data.player;
     activeQuest = data.activeQuest;
-    for (final p in player.explored) {
-      _exploredKeys.add(_gridKey(p));
+    // Migración: partidas viejas no tenían fechas por punto explorado.
+    if (player.exploredDays.length != player.explored.length) {
+      final today = dayNumber();
+      player.exploredDays =
+          List<int>.filled(player.explored.length, today, growable: true);
+    }
+    for (var i = 0; i < player.explored.length; i++) {
+      _exploredKeys[_gridKey(player.explored[i])] = i;
     }
     _checkCampaign();
     loaded = true;
@@ -219,19 +230,95 @@ class GameController extends ChangeNotifier {
 
   void _revealFog(LatLng p) {
     final explored = player.explored;
-    // Rejilla espacial: si esta celda (~50 m) ya fue revelada, no duplicar.
     final key = _gridKey(p);
-    if (_exploredKeys.contains(key)) return;
-    // Y además, mínima separación con los puntos recientes.
+    final existing = _exploredKeys[key];
+    if (existing != null) {
+      // Zona ya revelada: revisitarla ahuyenta a la Niebla de nuevo.
+      if (existing < player.exploredDays.length) {
+        player.exploredDays[existing] = dayNumber();
+      }
+      return;
+    }
+    // Mínima separación con los puntos recientes.
     final start = math.max(0, explored.length - 60);
     for (var i = explored.length - 1; i >= start; i--) {
       if (haversineMeters(explored[i], p) < _exploredMinGapMeters) {
         return;
       }
     }
-    _exploredKeys.add(key);
+    _exploredKeys[key] = explored.length;
     explored.add(p);
+    player.exploredDays.add(dayNumber());
     _checkFogMedal();
+  }
+
+  /// Revela un estallido de niebla alrededor de un punto (puestos).
+  void _revealBurst(LatLng center) {
+    _revealFogPointForced(center);
+    for (var i = 0; i < 6; i++) {
+      _revealFogPointForced(destinationPoint(center, 65, i * 60.0));
+      _revealFogPointForced(destinationPoint(center, 125, i * 60.0 + 30));
+    }
+  }
+
+  void _revealFogPointForced(LatLng p) {
+    final key = _gridKey(p);
+    final existing = _exploredKeys[key];
+    if (existing != null) {
+      if (existing < player.exploredDays.length) {
+        player.exploredDays[existing] = dayNumber();
+      }
+      return;
+    }
+    _exploredKeys[key] = player.explored.length;
+    player.explored.add(p);
+    player.exploredDays.add(dayNumber());
+  }
+
+  // ------------------------------------------------------------------
+  // Puestos de avanzada
+  // ------------------------------------------------------------------
+
+  /// ¿El puesto ya fue activado hoy?
+  bool outpostUsedToday(Outpost o) =>
+      player.outpostDay[o.id] == dayNumber();
+
+  /// Resultado: null = ok; texto = motivo por el que no se pudo.
+  String? activateOutpost(Outpost o) {
+    final p = position;
+    if (p == null) return 'Aún no encuentro tu posición.';
+    if (haversineMeters(p, o.pos) > 45) {
+      return 'Acércate más: la bendición se recibe a pie.';
+    }
+    if (outpostUsedToday(o)) {
+      return 'Este lugar ya te bendijo hoy. Vuelve mañana.';
+    }
+
+    final firstTime = !player.outpostDay.containsKey(o.id);
+    player.outpostDay[o.id] = dayNumber();
+    if (firstTime) player.outpostsActivated += 1;
+
+    player.xp += 40;
+    _revealBurst(o.pos);
+
+    // A veces el puesto guarda un material olvidado.
+    if (_rng.nextInt(100) < 30) {
+      final mat = materialCatalog[_rng.nextInt(4)]; // materiales comunes
+      player.materials[mat.id] = (player.materials[mat.id] ?? 0) + 1;
+    }
+
+    if (player.outpostsActivated >= 10 &&
+        !player.medals.contains('peregrino')) {
+      player.medals.add('peregrino');
+    }
+    if (player.outpostsActivated >= 25 &&
+        !player.medals.contains('red_reino')) {
+      player.medals.add('red_reino');
+    }
+
+    Storage.save(player, activeQuest);
+    notifyListeners();
+    return null;
   }
 
   void _trackQuest(LatLng p, DateTime timestamp) {
@@ -782,9 +869,14 @@ class GameController extends ChangeNotifier {
       activeQuest = null;
       pendingEncounter = null;
       pendingReward = null;
+      if (player.exploredDays.length != player.explored.length) {
+        final today = dayNumber();
+        player.exploredDays =
+            List<int>.filled(player.explored.length, today, growable: true);
+      }
       _exploredKeys.clear();
-      for (final p in player.explored) {
-        _exploredKeys.add(_gridKey(p));
+      for (var i = 0; i < player.explored.length; i++) {
+        _exploredKeys[_gridKey(player.explored[i])] = i;
       }
       notifyListeners();
       return true;

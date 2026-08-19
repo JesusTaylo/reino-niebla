@@ -59,6 +59,14 @@ class PlayerState {
   /// Puntos del mapa ya revelados (niebla despejada).
   List<LatLng> explored;
 
+  /// Día (número) en que cada punto fue revelado o revisitado por última
+  /// vez. Corre paralelo a [explored]; la Niebla regresa a los puntos viejos.
+  List<int> exploredDays;
+
+  /// Puestos de avanzada activados: id -> día de la última activación.
+  Map<String, int> outpostDay;
+  int outpostsActivated;
+
   bool onboardingDone;
 
   /// Nombre elegido por el jugador ('' = aún no creó su personaje).
@@ -91,6 +99,9 @@ class PlayerState {
     Map<String, int>? bestiary,
     this.battlesWon = 0,
     CampaignState? campaign,
+    List<int>? exploredDays,
+    Map<String, int>? outpostDay,
+    this.outpostsActivated = 0,
   })  : medals = medals ?? [],
         inventory = inventory ?? [],
         equipped = equipped ?? {},
@@ -98,7 +109,9 @@ class PlayerState {
         appearance = appearance ?? Appearance(),
         materials = materials ?? {},
         bestiary = bestiary ?? {},
-        campaign = campaign ?? CampaignState();
+        campaign = campaign ?? CampaignState(),
+        exploredDays = exploredDays ?? [],
+        outpostDay = outpostDay ?? {};
 
   factory PlayerState.newPlayer() {
     return PlayerState(
@@ -169,6 +182,9 @@ class PlayerState {
         'bestiary': bestiary,
         'battlesWon': battlesWon,
         'campaign': campaign.toJson(),
+        'exploredDays': exploredDays,
+        'outpostDay': outpostDay,
+        'outpostsActivated': outpostsActivated,
       };
 
   factory PlayerState.fromJson(Map<String, dynamic> json) {
@@ -203,6 +219,13 @@ class PlayerState {
           ? CampaignState.fromJson(
               (json['campaign'] as Map).cast<String, dynamic>())
           : null,
+      exploredDays: ((json['exploredDays'] as List?) ?? [])
+          .map((e) => (e as num).toInt())
+          .toList(),
+      outpostDay: ((json['outpostDay'] as Map?) ?? {})
+          .map((k, v) => MapEntry(k.toString(), (v as num).toInt())),
+      outpostsActivated:
+          (json['outpostsActivated'] as num?)?.toInt() ?? 0,
     );
   }
 }

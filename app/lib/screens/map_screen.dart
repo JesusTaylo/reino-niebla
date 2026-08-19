@@ -11,8 +11,10 @@ import '../models/items.dart';
 import '../models/quest.dart';
 import '../theme.dart';
 import '../util/geo.dart';
+import '../models/outposts.dart';
 import '../widgets/avatar_view.dart';
 import '../widgets/fog_layer.dart';
+import '../widgets/outpost_layer.dart';
 import 'avatar_screen.dart';
 import 'battle_screen.dart';
 import 'campaign_screen.dart';
@@ -198,6 +200,9 @@ class _MapScreenState extends State<MapScreen> {
                   ),
                   FogLayer(
                     revealed: game.player.explored,
+                    revealedDays: game.player.exploredDays,
+                    today: dayNumber(),
+                    staleAfterDays: GameController.fogReturnDays,
                     playerPosition: pos,
                     radiusMeters: GameController.fogRevealRadiusMeters,
                     // El final oculto tiñe la Niebla durante 24 horas.
@@ -205,6 +210,8 @@ class _MapScreenState extends State<MapScreen> {
                         ? const Color(0x8F2A0A10)
                         : const Color(0x8F0A0E24),
                   ),
+                  // Puestos de avanzada (edificios 2.5D).
+                  OutpostLayer(controller: game),
                   if (quest != null && quest.route.isNotEmpty)
                     PolylineLayer(
                       polylines: [
