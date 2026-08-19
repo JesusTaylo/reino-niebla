@@ -54,3 +54,9 @@ print(f"Íconos copiados: {copied}")
 with open(os.path.join(project, "analysis_options.yaml"), "w") as f:
     f.write("analyzer:\n  errors:\n    unused_import: warning\n")
 print("analysis_options.yaml reemplazado.")
+
+# El test de la plantilla referencia una clase (MyApp) que ya no existe.
+test_dir = os.path.join(project, "test")
+if os.path.isdir(test_dir):
+    shutil.rmtree(test_dir)
+    print("Tests de plantilla eliminados.")
