@@ -11,9 +11,23 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      RN_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
     steps:
       - name: Descargar código
         uses: actions/checkout@v4
+
+      - name: Preparar llave de firma (si existe el secreto)
+        env:
+          KS_B64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$GITHUB_WORKSPACE/reino-keystore.jks"
+            echo "RN_KEYSTORE_PATH=$GITHUB_WORKSPACE/reino-keystore.jks" >> "$GITHUB_ENV"
+            echo "✅ Firma digital propia activada"
+          else
+            echo "ℹ️ Sin secretos de firma: se usará la firma de desarrollo"
+          fi
 
       - name: Instalar Java
         uses: actions/setup-java@v4
