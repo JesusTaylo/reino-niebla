@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../game_controller.dart';
+import '../models/bestiary.dart';
 import '../models/items.dart';
 import '../models/quest.dart';
 import '../theme.dart';
@@ -13,6 +14,7 @@ import '../util/geo.dart';
 import '../widgets/avatar_view.dart';
 import '../widgets/fog_layer.dart';
 import 'avatar_screen.dart';
+import 'battle_screen.dart';
 import 'medals_screen.dart';
 import 'reward_screen.dart';
 
@@ -316,6 +318,12 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
 
+    // ---- Encuentro con una criatura de la bruma ----
+    final encounter = game.pendingEncounter;
+    if (encounter != null) {
+      return _encounterCard(encounter);
+    }
+
     if (quest == null) {
       // Botón píldora centrado: no ocupa todo el ancho del mapa.
       return FilledButton(
@@ -407,6 +415,87 @@ class _MapScreenState extends State<MapScreen> {
               style: TextStyle(fontSize: 11, color: RN.parchmentDim),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _encounterCard(Enemy enemy) {
+    final isBoss = enemy.spec.isBoss;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: RN.night.withValues(alpha: 0.94),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isBoss ? RN.danger : RN.gold.withValues(alpha: 0.6),
+          width: isBoss ? 2 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: (isBoss ? RN.danger : RN.gold).withValues(alpha: 0.35),
+            blurRadius: 16,
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Text(enemy.spec.emoji,
+                  style: TextStyle(fontSize: isBoss ? 44 : 36)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isBoss
+                          ? '¡${enemy.spec.name} despierta! (Nv ${enemy.level})'
+                          : '¡${enemy.spec.name} (Nv ${enemy.level}) bloquea tu senda!',
+                      style: fantasyTitle(14.5,
+                          color: isBoss ? RN.danger : RN.goldSoft),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      enemy.spec.flavor,
+                      style: const TextStyle(
+                          fontSize: 11, color: RN.parchmentDim),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: FilledButton(
+                  onPressed: () {
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => BattleScreen(
+                          controller: game, enemy: enemy),
+                    ));
+                  },
+                  child: const Text('⚔️ Luchar'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 2,
+                child: TextButton(
+                  onPressed: game.dismissEncounter,
+                  child: const Text('🏃 Evitar',
+                      style: TextStyle(color: RN.parchmentDim)),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

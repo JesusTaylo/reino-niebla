@@ -63,6 +63,13 @@ class PlayerState {
   String name;
   Appearance appearance;
 
+  /// Materiales de caza (id -> cantidad).
+  Map<String, int> materials;
+
+  /// Bestiario (id de criatura -> victorias).
+  Map<String, int> bestiary;
+  int battlesWon;
+
   PlayerState({
     this.xp = 0,
     this.expeditionsDone = 0,
@@ -75,11 +82,16 @@ class PlayerState {
     this.onboardingDone = false,
     this.name = '',
     Appearance? appearance,
+    Map<String, int>? materials,
+    Map<String, int>? bestiary,
+    this.battlesWon = 0,
   })  : medals = medals ?? [],
         inventory = inventory ?? [],
         equipped = equipped ?? {},
         explored = explored ?? [],
-        appearance = appearance ?? Appearance();
+        appearance = appearance ?? Appearance(),
+        materials = materials ?? {},
+        bestiary = bestiary ?? {};
 
   factory PlayerState.newPlayer() {
     return PlayerState(
@@ -146,6 +158,9 @@ class PlayerState {
         'onboardingDone': onboardingDone,
         'name': name,
         'appearance': appearance.toJson(),
+        'materials': materials,
+        'bestiary': bestiary,
+        'battlesWon': battlesWon,
       };
 
   factory PlayerState.fromJson(Map<String, dynamic> json) {
@@ -171,6 +186,11 @@ class PlayerState {
           ? Appearance.fromJson(
               (json['appearance'] as Map).cast<String, dynamic>())
           : null,
+      materials: ((json['materials'] as Map?) ?? {})
+          .map((k, v) => MapEntry(k.toString(), (v as num).toInt())),
+      bestiary: ((json['bestiary'] as Map?) ?? {})
+          .map((k, v) => MapEntry(k.toString(), (v as num).toInt())),
+      battlesWon: (json['battlesWon'] as num?)?.toInt() ?? 0,
     );
   }
 }

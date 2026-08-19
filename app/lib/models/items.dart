@@ -327,6 +327,36 @@ const List<GearItem> gearCatalog = [
   ),
 ];
 
+/// Stats de combate del equipo: cada pieza aporta según su slot y rareza.
+extension GearStats on GearItem {
+  int get statValue {
+    switch (rarity) {
+      case Rarity.comun:
+        return 2;
+      case Rarity.raro:
+        return 4;
+      case Rarity.epico:
+        return 7;
+      case Rarity.legendario:
+        return 11;
+    }
+  }
+
+  /// Texto corto del bono, p. ej. "+6 Vida".
+  String get statLabel {
+    switch (slot) {
+      case GearSlot.yelmo:
+        return '+${statValue * 3} Vida';
+      case GearSlot.tunica:
+        return '+$statValue Defensa';
+      case GearSlot.reliquia:
+        return '+$statValue Poder';
+      case GearSlot.capa:
+        return '+$statValue Suerte';
+    }
+  }
+}
+
 GearItem? gearById(String id) {
   for (final item in gearCatalog) {
     if (item.id == id) return item;

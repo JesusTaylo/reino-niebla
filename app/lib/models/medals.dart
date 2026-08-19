@@ -85,6 +85,30 @@ const List<Medal> medalCatalog = [
     desc: 'Despeja 1000 zonas de niebla del mapa.',
     emoji: '🌫️',
   ),
+  Medal(
+    id: 'cazador_1',
+    name: 'Cazador de Brumas',
+    desc: 'Vence a tu primera criatura de la bruma.',
+    emoji: '⚔️',
+  ),
+  Medal(
+    id: 'cazador_10',
+    name: 'Azote de Criaturas',
+    desc: 'Vence a 10 criaturas de la bruma.',
+    emoji: '🗡️',
+  ),
+  Medal(
+    id: 'cazador_50',
+    name: 'Leyenda de Acero',
+    desc: 'Vence a 50 criaturas de la bruma.',
+    emoji: '🛡️',
+  ),
+  Medal(
+    id: 'jefe_1',
+    name: 'Vencedor del Guardián',
+    desc: 'Derrota al Guardián de la Bruma en una ruta larga.',
+    emoji: '🗿',
+  ),
 ];
 
 Medal? medalById(String id) {

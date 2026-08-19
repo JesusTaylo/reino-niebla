@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
+import 'models/bestiary.dart';
 import 'models/items.dart';
 import 'models/medals.dart';
 import 'models/player_state.dart';
@@ -38,6 +39,27 @@ class RewardBundle {
   });
 }
 
+/// Botín de una batalla contra una criatura de la bruma.
+class BattleSpoils {
+  final bool won;
+  final int xp;
+  final String? materialId;
+  final int materialCount;
+  final GearItem? gear;
+  final List<Medal> newMedals;
+  final bool leveledUp;
+
+  const BattleSpoils({
+    required this.won,
+    required this.xp,
+    required this.materialId,
+    required this.materialCount,
+    required this.gear,
+    required this.newMedals,
+    required this.leveledUp,
+  });
+}
+
 /// Controlador central del juego: posición, niebla, expediciones y progreso.
 class GameController extends ChangeNotifier {
   PlayerState player = PlayerState.newPlayer();
@@ -50,6 +72,11 @@ class GameController extends ChangeNotifier {
 
   /// Recompensa pendiente de mostrar tras completar una expedición.
   RewardBundle? pendingReward;
+
+  /// Criatura de la bruma que bloquea el camino (si hay encuentro activo).
+  Enemy? pendingEncounter;
+  double _metersSinceEncounterRoll = 0;
+  bool _bossSpawnedThisQuest = false;
 
   StreamSubscription<Position>? _posSub;
   DateTime _lastSave = DateTime.fromMillisecondsSinceEpoch(0);
@@ -221,7 +248,108 @@ class GameController extends ChangeNotifier {
     quest.walkedMeters += segment;
     quest.trail.add(p);
 
+    _maybeSpawnEncounter(segment, quest.tier);
     _checkQuestCompletion(p);
+  }
+
+  // ------------------------------------------------------------------
+  // Criaturas de la bruma
+  // ------------------------------------------------------------------
+
+  /// Stats de combate del jugador (nivel + equipo).
+  int _gearBonus(GearSlot slot) => equippedIn(slot)?.statValue ?? 0;
+  int get maxHp => 30 + player.level * 5 + _gearBonus(GearSlot.yelmo) * 3;
+  int get attack => 6 + player.level * 2 + _gearBonus(GearSlot.reliquia);
+  int get defense => 2 + player.level + _gearBonus(GearSlot.tunica);
+  int get luck => _gearBonus(GearSlot.capa);
+
+  void _maybeSpawnEncounter(double segment, int tier) {
+    if (pendingEncounter != null || pendingReward != null) return;
+    _metersSinceEncounterRoll += segment;
+    if (_metersSinceEncounterRoll < 130) return;
+    _metersSinceEncounterRoll = 0;
+
+    // El Guardián solo despierta en rutas largas, una vez por expedición.
+    if (tier == 2 && !_bossSpawnedThisQuest && _rng.nextDouble() < 0.06) {
+      _bossSpawnedThisQuest = true;
+      pendingEncounter = Enemy.boss(player.level);
+      notifyListeners();
+      return;
+    }
+    if (_rng.nextDouble() < 0.24) {
+      pendingEncounter = Enemy.randomFor(player.level, _rng);
+      notifyListeners();
+    }
+  }
+
+  /// Evitar el encuentro: la criatura vuelve a la niebla.
+  void dismissEncounter() {
+    pendingEncounter = null;
+    _metersSinceEncounterRoll = -150; // distancia de gracia
+    notifyListeners();
+  }
+
+  /// Aplica el resultado de una batalla y devuelve el botín para mostrar.
+  BattleSpoils applyBattleResult(Enemy enemy, bool won) {
+    pendingEncounter = null;
+    _metersSinceEncounterRoll = -100;
+
+    if (!won) {
+      Storage.save(player, activeQuest);
+      notifyListeners();
+      return const BattleSpoils(
+          won: false,
+          xp: 0,
+          materialId: null,
+          materialCount: 0,
+          gear: null,
+          newMedals: [],
+          leveledUp: false);
+    }
+
+    final levelBefore = player.level;
+    player.xp += enemy.xp;
+    player.battlesWon += 1;
+    player.bestiary[enemy.spec.id] =
+        (player.bestiary[enemy.spec.id] ?? 0) + 1;
+
+    // Materiales: 1-2 (el duende y el jefe son más generosos).
+    var count = 1 + _rng.nextInt(2);
+    if (enemy.spec.id == 'duende' || enemy.spec.isBoss) count += 1;
+    player.materials[enemy.spec.materialId] =
+        (player.materials[enemy.spec.materialId] ?? 0) + count;
+
+    // Botín de equipo raro (la suerte de tu capa ayuda).
+    GearItem? gear;
+    final dropChance = (enemy.spec.isBoss ? 45 : 6) + luck;
+    if (_rng.nextInt(100) < dropChance) {
+      final unowned = gearCatalog
+          .where((g) =>
+              !player.inventory.contains(g.id) &&
+              (enemy.spec.isBoss
+                  ? true
+                  : g.rarity == Rarity.comun || g.rarity == Rarity.raro))
+          .toList();
+      if (unowned.isNotEmpty) {
+        gear = unowned[_rng.nextInt(unowned.length)];
+        player.inventory.add(gear.id);
+      }
+    }
+
+    final newMedals = _checkMedals();
+    final leveledUp = player.level > levelBefore;
+
+    Storage.save(player, activeQuest);
+    notifyListeners();
+    return BattleSpoils(
+      won: true,
+      xp: enemy.xp,
+      materialId: enemy.spec.materialId,
+      materialCount: count,
+      gear: gear,
+      newMedals: newMedals,
+      leveledUp: leveledUp,
+    );
   }
 
   void _checkQuestCompletion(LatLng p) {
@@ -252,6 +380,9 @@ class GameController extends ChangeNotifier {
     activeQuest = quest;
     _lastTrailPoint = null;
     _lastTrailTime = null;
+    pendingEncounter = null;
+    _metersSinceEncounterRoll = 0;
+    _bossSpawnedThisQuest = false;
     await Storage.save(player, activeQuest);
     await startTracking();
     notifyListeners();
@@ -261,6 +392,7 @@ class GameController extends ChangeNotifier {
     activeQuest = null;
     _lastTrailPoint = null;
     _lastTrailTime = null;
+    pendingEncounter = null;
     await Storage.save(player, activeQuest);
     await startTracking();
     notifyListeners();
@@ -270,6 +402,7 @@ class GameController extends ChangeNotifier {
     activeQuest = null;
     _lastTrailPoint = null;
     _lastTrailTime = null;
+    pendingEncounter = null;
 
     final levelBefore = player.level;
 
@@ -389,6 +522,12 @@ class GameController extends ChangeNotifier {
     if (km >= 500) grant('km_500');
 
     if (player.longExpeditionsDone >= 1) grant('larga_1');
+
+    final wins = player.battlesWon;
+    if (wins >= 1) grant('cazador_1');
+    if (wins >= 10) grant('cazador_10');
+    if (wins >= 50) grant('cazador_50');
+    if ((player.bestiary['guardian'] ?? 0) >= 1) grant('jefe_1');
 
     if (completedQuest != null) {
       final hour = DateTime.now().hour;

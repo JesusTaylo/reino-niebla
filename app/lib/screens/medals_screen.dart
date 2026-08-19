@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../game_controller.dart';
+import '../models/bestiary.dart';
 import '../models/medals.dart';
 import '../theme.dart';
 import '../util/geo.dart';
@@ -49,6 +50,99 @@ class MedalsScreen extends StatelessWidget {
                               'zonas despejadas'),
                         ],
                       ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // ---- Bestiario ----
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Text('Bestiario',
+                            style:
+                                fantasyTitle(18, color: RN.goldSoft)),
+                      ),
+                      Center(
+                        child: Text(
+                          '${player.battlesWon} criaturas vencidas',
+                          style: const TextStyle(
+                              fontSize: 12, color: RN.parchmentDim),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      for (final e in enemyCatalog)
+                        Padding(
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 3),
+                          child: Row(
+                            children: [
+                              Opacity(
+                                opacity:
+                                    (player.bestiary[e.id] ?? 0) > 0
+                                        ? 1
+                                        : 0.35,
+                                child: Text(e.emoji,
+                                    style:
+                                        const TextStyle(fontSize: 20)),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  (player.bestiary[e.id] ?? 0) > 0
+                                      ? e.name
+                                      : '???',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    color: (player.bestiary[e.id] ?? 0) >
+                                            0
+                                        ? RN.parchment
+                                        : RN.parchmentDim,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                '× ${player.bestiary[e.id] ?? 0}',
+                                style: const TextStyle(
+                                    color: RN.gold,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                      if (player.materials.isNotEmpty) ...[
+                        const Divider(color: Colors.white12, height: 20),
+                        const Text('Materiales de caza',
+                            style: TextStyle(
+                                color: RN.goldSoft,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13)),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 6,
+                          children: [
+                            for (final entry in player.materials.entries)
+                              if (materialById(entry.key) != null &&
+                                  entry.value > 0)
+                                Chip(
+                                  backgroundColor: RN.nightSoft,
+                                  label: Text(
+                                    '${materialById(entry.key)!.emoji} '
+                                    '${materialById(entry.key)!.name} × ${entry.value}',
+                                    style:
+                                        const TextStyle(fontSize: 11.5),
+                                  ),
+                                ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),

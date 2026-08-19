@@ -125,7 +125,7 @@ class _AvatarScreenState extends State<AvatarScreen> {
                         ),
                         subtitle: Text(
                           owned
-                              ? item.desc
+                              ? '${item.statLabel} · ${item.desc}'
                               : 'Objeto ${item.rarity.label.toLowerCase()} por descubrir…',
                           style: const TextStyle(
                               fontSize: 11.5, color: RN.parchmentDim),
