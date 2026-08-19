@@ -284,6 +284,8 @@ class GameController extends ChangeNotifier {
     if (accuracyOk) {
       _revealFog(p);
       _trackQuest(p, pos.timestamp);
+      // La meta se revisa en CADA tick, aunque el tramo no haya contado.
+      _checkQuestCompletion(p);
     }
 
     _maybeSave();
@@ -415,7 +417,6 @@ class GameController extends ChangeNotifier {
     quest.trail.add(p);
 
     _maybeSpawnEncounter(segment, quest.tier);
-    _checkQuestCompletion(p);
   }
 
   // ------------------------------------------------------------------
@@ -528,10 +529,13 @@ class GameController extends ChangeNotifier {
 
     final nearGoal = haversineMeters(p, quest.goal) < 60;
     final walkedEnough = quest.walkedMeters >= quest.routeMeters * 0.88;
+    // Válvula de escape: si caminaste bastante de más (aunque sea fuera de
+    // la ruta), la expedición se completa donde estés — el esfuerzo cuenta.
+    final overshoot = quest.walkedMeters >= quest.routeMeters * 1.15;
     final elapsed = DateTime.now().difference(quest.startedAt).inSeconds;
     final timeOk = debugMode || elapsed > quest.routeMeters / 3.5;
 
-    if (nearGoal && walkedEnough && timeOk) {
+    if (timeOk && ((nearGoal && walkedEnough) || overshoot)) {
       _completeQuest(quest);
     }
   }

@@ -470,7 +470,9 @@ class _MapScreenState extends State<MapScreen> {
               Text(
                 quest.walkedMeters < 30
                     ? '${formatKm(quest.routeMeters)} 🥾'
-                    : 'faltan ${formatKm(remaining)}',
+                    : quest.walkedMeters >= quest.routeMeters * 0.88
+                        ? '¡Ve a la 🚩 para reclamar!'
+                        : 'faltan ${formatKm(remaining)}',
                 style: const TextStyle(
                     fontSize: 12,
                     color: RN.parchment,
