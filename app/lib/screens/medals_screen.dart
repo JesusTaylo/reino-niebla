@@ -1,4 +1,9 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../game_controller.dart';
 import '../models/bestiary.dart';
@@ -163,11 +168,114 @@ class MedalsScreen extends StatelessWidget {
                     ),
                 ],
               ),
+              const SizedBox(height: 16),
+
+              // ---- Archivo Real: respaldo de partida ----
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      Text('📜 Archivo Real',
+                          style: fantasyTitle(17, color: RN.goldSoft)),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Guarda tu crónica en un pergamino (archivo) para '
+                        'cambiar de teléfono o recuperarla si algo pasa.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontSize: 12, color: RN.parchmentDim),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: FilledButton.tonal(
+                              onPressed: () => _exportBackup(context),
+                              child: const Text('⬆️ Exportar'),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: FilledButton.tonal(
+                              onPressed: () => _importBackup(context),
+                              child: const Text('⬇️ Importar'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           );
         },
       ),
     );
+  }
+
+  Future<void> _exportBackup(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final path = await controller.exportBackup();
+    if (path == null) {
+      messenger.showSnackBar(const SnackBar(
+          content: Text('No se pudo crear el respaldo.')));
+      return;
+    }
+    await SharePlus.instance.share(ShareParams(
+      files: [XFile(path)],
+      subject: 'Respaldo de Reino de Niebla',
+      text: 'Mi partida de Reino de Niebla 🏰',
+    ));
+  }
+
+  Future<void> _importBackup(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await FilePicker.platform.pickFiles(withData: true);
+    final bytes = result?.files.single.bytes;
+    String? raw;
+    if (bytes != null) {
+      try {
+        raw = utf8.decode(bytes);
+      } catch (_) {}
+    } else if (result?.files.single.path != null) {
+      try {
+        raw = await File(result!.files.single.path!).readAsString();
+      } catch (_) {}
+    }
+    if (raw == null) return;
+
+    if (!context.mounted) return;
+    final sure = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: RN.panel,
+        title: const Text('¿Restaurar respaldo?'),
+        content: const Text(
+            'Tu progreso actual será reemplazado por el del pergamino. '
+            'Esta acción no se puede deshacer.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Restaurar',
+                style: TextStyle(color: RN.goldSoft)),
+          ),
+        ],
+      ),
+    );
+    if (sure != true) return;
+
+    final ok = await controller.importBackup(raw);
+    messenger.showSnackBar(SnackBar(
+      content: Text(ok
+          ? '✅ ¡Crónica restaurada! Bienvenido de vuelta.'
+          : '❌ Ese archivo no parece un respaldo válido.'),
+    ));
   }
 
   Widget _stat(String emoji, String value, String label) {

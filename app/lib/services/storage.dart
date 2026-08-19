@@ -34,6 +34,23 @@ class Storage {
     }
   }
 
+  /// Contenido crudo del guardado (para respaldos).
+  static Future<String?> rawJson() async {
+    try {
+      final f = await _file();
+      if (!await f.exists()) return null;
+      return await f.readAsString();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Sobrescribe el guardado con un respaldo ya validado.
+  static Future<void> writeRaw(String json) async {
+    final f = await _file();
+    await f.writeAsString(json, flush: true);
+  }
+
   static Future<void> save(PlayerState player, Quest? activeQuest) async {
     try {
       final f = await _file();

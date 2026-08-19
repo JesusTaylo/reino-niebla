@@ -1,5 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
+
+import 'package:path_provider/path_provider.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
@@ -569,6 +573,53 @@ class GameController extends ChangeNotifier {
     player.equipped.remove(slot.name);
     Storage.save(player, activeQuest);
     notifyListeners();
+  }
+
+  // ------------------------------------------------------------------
+  // Respaldo de partida
+  // ------------------------------------------------------------------
+
+  /// Crea un archivo de respaldo listo para compartir. Devuelve su ruta.
+  Future<String?> exportBackup() async {
+    try {
+      await Storage.save(player, activeQuest);
+      final raw = await Storage.rawJson();
+      if (raw == null) return null;
+      final dir = await getTemporaryDirectory();
+      final now = DateTime.now();
+      final stamp = '${now.year}'
+          '${now.month.toString().padLeft(2, '0')}'
+          '${now.day.toString().padLeft(2, '0')}';
+      final file = File('${dir.path}/ReinoDeNiebla-respaldo-$stamp.json');
+      await file.writeAsString(raw, flush: true);
+      return file.path;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Restaura una partida desde el contenido de un respaldo.
+  /// Devuelve false si el archivo no es un respaldo válido.
+  Future<bool> importBackup(String rawJson) async {
+    try {
+      final data = jsonDecode(rawJson) as Map<String, dynamic>;
+      if (data['player'] is! Map) return false;
+      final restored = PlayerState.fromJson(
+          (data['player'] as Map).cast<String, dynamic>());
+      await Storage.writeRaw(rawJson);
+      player = restored;
+      activeQuest = null;
+      pendingEncounter = null;
+      pendingReward = null;
+      _exploredKeys.clear();
+      for (final p in player.explored) {
+        _exploredKeys.add(_gridKey(p));
+      }
+      notifyListeners();
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Guarda nombre/apariencia editados en el Espejo Mágico.

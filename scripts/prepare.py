@@ -60,3 +60,39 @@ test_dir = os.path.join(project, "test")
 if os.path.isdir(test_dir):
     shutil.rmtree(test_dir)
     print("Tests de plantilla eliminados.")
+
+# Firma de release: usa la llave del entorno si existe (RN_KEYSTORE_PATH),
+# y si no, cae a la firma de desarrollo como antes.
+gradle_path = os.path.join(project, "android", "app", "build.gradle.kts")
+with open(gradle_path) as f:
+    gradle = f.read()
+
+SIGNING = '''    signingConfigs {
+        create("release") {
+            val ksPath = System.getenv("RN_KEYSTORE_PATH")
+            if (ksPath != null) {
+                storeFile = file(ksPath)
+                storePassword = System.getenv("RN_KEYSTORE_PASSWORD")
+                keyAlias = "reinoniebla"
+                keyPassword = System.getenv("RN_KEYSTORE_PASSWORD")
+            }
+        }
+    }
+
+'''
+
+if "RN_KEYSTORE_PATH" not in gradle:
+    gradle = gradle.replace("    buildTypes {", SIGNING + "    buildTypes {", 1)
+    gradle = gradle.replace(
+        'signingConfig = signingConfigs.getByName("debug")',
+        'signingConfig = if (System.getenv("RN_KEYSTORE_PATH") != null) '
+        'signingConfigs.getByName("release") else signingConfigs.getByName("debug")',
+        1,
+    )
+    with open(gradle_path, "w") as f:
+        f.write(gradle)
+
+if "RN_KEYSTORE_PATH" in gradle and 'create("release")' in gradle:
+    print("Configuración de firma lista.")
+else:
+    print("AVISO: no se pudo inyectar la configuración de firma; se usará debug.")
