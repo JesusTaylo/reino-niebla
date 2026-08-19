@@ -4,18 +4,60 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import '../models/items.dart';
+import '../models/player_state.dart';
 
-/// Dibuja el avatar del explorador con su equipo actual.
-/// [equipped] mapea cada slot a su objeto (o null si no hay nada).
+/// Paleta de tonos de piel disponibles en el Espejo Mágico.
+const List<Color> skinPalette = [
+  Color(0xFFF5D7B8),
+  Color(0xFFE8B98A),
+  Color(0xFFD29B6E),
+  Color(0xFFB07B4F),
+  Color(0xFF8B5A33),
+  Color(0xFF5F3C22),
+];
+
+/// Paleta de colores de pelo.
+const List<Color> hairPalette = [
+  Color(0xFF241D18), // negro
+  Color(0xFF4A3220), // café oscuro
+  Color(0xFF7A5230), // castaño
+  Color(0xFFD9A94A), // rubio
+  Color(0xFFB4502E), // pelirrojo
+  Color(0xFFB9B9B9), // canoso
+  Color(0xFF4E6ED6), // azul místico
+];
+
+const List<String> hairStyleNames = [
+  'Rapado',
+  'Corto',
+  'Despeinado',
+  'Media melena',
+  'Melena larga',
+  'Chongo',
+];
+
+const List<String> facialHairNames = [
+  'Sin vello',
+  'Bigote',
+  'Candado',
+  'Barba completa',
+];
+
+/// Dibuja el avatar del explorador con su apariencia y equipo actuales.
 class AvatarView extends StatelessWidget {
   final Map<GearSlot, GearItem?> equipped;
+  final Appearance appearance;
 
-  const AvatarView({super.key, required this.equipped});
+  const AvatarView({
+    super.key,
+    required this.equipped,
+    required this.appearance,
+  });
 
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      painter: _AvatarPainter(equipped),
+      painter: _AvatarPainter(equipped, appearance),
       child: const AspectRatio(aspectRatio: 100 / 120),
     );
   }
@@ -23,14 +65,16 @@ class AvatarView extends StatelessWidget {
 
 class _AvatarPainter extends CustomPainter {
   final Map<GearSlot, GearItem?> equipped;
+  final Appearance look;
 
-  _AvatarPainter(this.equipped);
+  _AvatarPainter(this.equipped, this.look);
 
-  static const _skin = Color(0xFFE8B98A);
-  static const _skinShadow = Color(0xFFC99A6B);
   static const _boot = Color(0xFF4E3524);
   static const _defaultTunicA = Color(0xFFC9B896);
   static const _defaultTunicB = Color(0xFF9C8A66);
+
+  Color get _skin => skinPalette[look.skinTone % skinPalette.length];
+  Color get _hair => hairPalette[look.hairColor % hairPalette.length];
 
   late double _u;
   late Canvas _c;
@@ -51,12 +95,16 @@ class _AvatarPainter extends CustomPainter {
     final tunic = equipped[GearSlot.tunica];
     final helmet = equipped[GearSlot.yelmo];
     final relic = equipped[GearSlot.reliquia];
+    final hasHelmet = helmet != null;
 
     if (cape != null) _drawCape(cape);
+    _drawHairBehind();
     _drawLegs();
     _drawBody(tunic);
     _drawArms(tunic);
     _drawHead();
+    _drawFacialHair();
+    _drawHairTop(hasHelmet);
     if (helmet != null) _drawHelmet(helmet);
     if (relic != null) _drawRelic(relic);
 
@@ -75,6 +123,131 @@ class _AvatarPainter extends CustomPainter {
     ..strokeCap = StrokeCap.round
     ..isAntiAlias = true;
 
+  // ---- Pelo: capa trasera (melenas) ----
+  void _drawHairBehind() {
+    final paint = _fill(_hair);
+    switch (look.hairStyle) {
+      case 3: // media melena: cortina detrás hasta la mandíbula
+        final path = Path()
+          ..moveTo(36 * _u, 26 * _u)
+          ..quadraticBezierTo(33 * _u, 44 * _u, 36 * _u, 50 * _u)
+          ..lineTo(64 * _u, 50 * _u)
+          ..quadraticBezierTo(67 * _u, 44 * _u, 64 * _u, 26 * _u)
+          ..close();
+        _c.drawPath(path, paint);
+        break;
+      case 4: // melena larga: cae hasta los hombros
+        final path = Path()
+          ..moveTo(36 * _u, 24 * _u)
+          ..quadraticBezierTo(30 * _u, 48 * _u, 34 * _u, 64 * _u)
+          ..quadraticBezierTo(42 * _u, 68 * _u, 50 * _u, 66 * _u)
+          ..quadraticBezierTo(58 * _u, 68 * _u, 66 * _u, 64 * _u)
+          ..quadraticBezierTo(70 * _u, 48 * _u, 64 * _u, 24 * _u)
+          ..close();
+        _c.drawPath(path, paint);
+        break;
+    }
+  }
+
+  // ---- Pelo: capa superior ----
+  void _drawHairTop(bool hasHelmet) {
+    final style = look.hairStyle;
+    final paint = _fill(_hair);
+    final topRect =
+        Rect.fromCircle(center: _p(50, 33.5), radius: 14.4 * _u);
+
+    if (style == 0) {
+      // Rapado: sombra sutil en el cráneo.
+      if (!hasHelmet) {
+        _c.drawArc(
+            topRect, math.pi, math.pi, true, _fill(_hair.withValues(alpha: 0.28)));
+      }
+      return;
+    }
+
+    // Casquete base para todos los estilos con pelo.
+    _c.drawArc(topRect, math.pi, math.pi, true, paint);
+    // Patillas.
+    _c.drawRRect(
+      RRect.fromRectAndRadius(
+          Rect.fromLTWH(36.2 * _u, 32 * _u, 3 * _u, 6 * _u),
+          Radius.circular(1.5 * _u)),
+      paint,
+    );
+    _c.drawRRect(
+      RRect.fromRectAndRadius(
+          Rect.fromLTWH(60.8 * _u, 32 * _u, 3 * _u, 6 * _u),
+          Radius.circular(1.5 * _u)),
+      paint,
+    );
+
+    if (hasHelmet) return; // el yelmo cubre los detalles superiores
+
+    switch (style) {
+      case 2: // despeinado: picos
+        final spikes = Path();
+        const xs = [40.0, 46.0, 52.0, 58.0];
+        for (final x in xs) {
+          spikes
+            ..moveTo(x * _u, 22 * _u)
+            ..lineTo((x + 3) * _u, 13 * _u)
+            ..lineTo((x + 6) * _u, 21 * _u)
+            ..close();
+        }
+        _c.drawPath(spikes, paint);
+        break;
+      case 5: // chongo
+        _c.drawCircle(_p(50, 16), 5.2 * _u, paint);
+        _c.drawLine(_p(46, 20), _p(54, 20), _stroke(_hair, 2));
+        break;
+    }
+  }
+
+  // ---- Vello facial ----
+  void _drawFacialHair() {
+    if (look.female || look.facialHair == 0) return;
+    final paint = _fill(_hair);
+    final f = look.facialHair;
+
+    if (f == 3) {
+      // Barba completa: media luna en la mitad inferior de la cara.
+      final path = Path()
+        ..addArc(
+            Rect.fromCircle(center: _p(50, 34.5), radius: 14.2 * _u),
+            math.pi * 0.08,
+            math.pi * 0.84)
+        ..arcTo(
+            Rect.fromCircle(center: _p(50, 33), radius: 8.2 * _u),
+            math.pi * 0.88,
+            -math.pi * 0.76,
+            false)
+        ..close();
+      _c.drawPath(path, paint);
+      return;
+    }
+
+    // Bigote (para 1 y 2).
+    final mustache = Path()
+      ..moveTo(50 * _u, 37.2 * _u)
+      ..quadraticBezierTo(46 * _u, 36.6 * _u, 44 * _u, 38.8 * _u)
+      ..quadraticBezierTo(47 * _u, 39.4 * _u, 50 * _u, 38.6 * _u)
+      ..quadraticBezierTo(53 * _u, 39.4 * _u, 56 * _u, 38.8 * _u)
+      ..quadraticBezierTo(54 * _u, 36.6 * _u, 50 * _u, 37.2 * _u)
+      ..close();
+    _c.drawPath(mustache, paint);
+
+    if (f == 2) {
+      // Candado: parche en la barbilla.
+      _c.drawRRect(
+        RRect.fromRectAndRadius(
+            Rect.fromCenter(
+                center: _p(50, 45.5), width: 7 * _u, height: 4.4 * _u),
+            Radius.circular(2 * _u)),
+        paint,
+      );
+    }
+  }
+
   // ---- Capa ----
   void _drawCape(GearItem cape) {
     final path = Path()
@@ -86,7 +259,6 @@ class _AvatarPainter extends CustomPainter {
       ..close();
 
     if (cape.variant == 3) {
-      // Capa con degradado (estelar / alba).
       final paint = Paint()
         ..shader = ui.Gradient.linear(
           _p(50, 52),
@@ -95,7 +267,6 @@ class _AvatarPainter extends CustomPainter {
         )
         ..isAntiAlias = true;
       _c.drawPath(path, paint);
-      // Estrellitas / destellos.
       final dot = _fill(cape.colorB);
       const spots = [
         [32.0, 70.0],
@@ -151,22 +322,25 @@ class _AvatarPainter extends CustomPainter {
     final b = tunic?.colorB ?? _defaultTunicB;
     final variant = tunic?.variant ?? 1;
 
+    // Silueta con cintura ligeramente marcada para el cuerpo femenino.
+    final waist = look.female ? 3.0 : 0.0;
     final body = Path()
       ..moveTo(38 * _u, 52 * _u)
       ..quadraticBezierTo(50 * _u, 46 * _u, 62 * _u, 52 * _u)
-      ..lineTo(66 * _u, 94 * _u)
+      ..quadraticBezierTo(
+          (63 - waist) * _u, 72 * _u, 66 * _u, 94 * _u)
       ..quadraticBezierTo(50 * _u, 100 * _u, 34 * _u, 94 * _u)
+      ..quadraticBezierTo(
+          (37 + waist) * _u, 72 * _u, 38 * _u, 52 * _u)
       ..close();
     _c.drawPath(body, _fill(a));
 
     if (variant == 2) {
-      // Cinturón con hebilla.
       _c.drawRect(Rect.fromLTWH(35 * _u, 74 * _u, 30 * _u, 5 * _u), _fill(b));
       _c.drawRect(
           Rect.fromLTWH(47 * _u, 73 * _u, 6 * _u, 7 * _u),
           _fill(const Color(0xFFD4AF37)));
     } else if (variant == 3) {
-      // Escamas / placas: filas de arcos.
       final scale = _stroke(b, 1.6);
       for (var row = 0; row < 4; row++) {
         final y = (58 + row * 9).toDouble();
@@ -182,7 +356,6 @@ class _AvatarPainter extends CustomPainter {
         }
       }
     } else {
-      // Costura sencilla al centro.
       _c.drawLine(_p(50, 52), _p(50, 96), _stroke(b, 1.2));
     }
   }
@@ -191,9 +364,7 @@ class _AvatarPainter extends CustomPainter {
   void _drawArms(GearItem? tunic) {
     final a = tunic?.colorA ?? _defaultTunicA;
     final arm = _stroke(a, 7);
-    // Brazo izquierdo relajado.
     _c.drawLine(_p(38, 56), _p(30, 76), arm);
-    // Brazo derecho sosteniendo la reliquia.
     _c.drawLine(_p(62, 56), _p(74, 70), arm);
     final hand = _fill(_skin);
     _c.drawCircle(_p(30, 78), 3.4 * _u, hand);
@@ -203,19 +374,26 @@ class _AvatarPainter extends CustomPainter {
   // ---- Cabeza ----
   void _drawHead() {
     _c.drawCircle(_p(50, 34), 14 * _u, _fill(_skin));
-    // Sombra del cuello.
+    final shadow =
+        Color.lerp(_skin, const Color(0xFF3A2B1E), 0.28)!;
     _c.drawArc(
       Rect.fromCircle(center: _p(50, 36), radius: 13 * _u),
       math.pi * 0.15,
       math.pi * 0.7,
       false,
-      _stroke(_skinShadow, 1.4),
+      _stroke(shadow, 1.4),
     );
     // Ojos.
     final eye = _fill(const Color(0xFF3A2B1E));
     _c.drawCircle(_p(45, 33), 1.7 * _u, eye);
     _c.drawCircle(_p(55, 33), 1.7 * _u, eye);
-    // Sonrisa ligera.
+    // Pestañas para el cuerpo femenino.
+    if (look.female) {
+      final lash = _stroke(const Color(0xFF3A2B1E), 1.1);
+      _c.drawLine(_p(42.6, 31.4), _p(44.0, 32.2), lash);
+      _c.drawLine(_p(57.4, 31.4), _p(56.0, 32.2), lash);
+    }
+    // Sonrisa (la barba completa la tapa después, como debe ser).
     _c.drawArc(
       Rect.fromCircle(center: _p(50, 37), radius: 5 * _u),
       math.pi * 0.2,
@@ -255,7 +433,6 @@ class _AvatarPainter extends CustomPainter {
               Radius.circular(2.5 * _u)),
           _fill(a),
         );
-        // Pluma.
         final feather = Path()
           ..moveTo(62 * _u, 26 * _u)
           ..quadraticBezierTo(70 * _u, 12 * _u, 76 * _u, 8 * _u)
@@ -313,7 +490,7 @@ class _AvatarPainter extends CustomPainter {
     }
   }
 
-  // ---- Reliquias (en la mano derecha, x≈76 y≈71) ----
+  // ---- Reliquias ----
   void _drawRelic(GearItem relic) {
     final a = relic.colorA;
     final b = relic.colorB;
@@ -386,7 +563,8 @@ class _AvatarPainter extends CustomPainter {
         _c.restore();
         break;
       case 5: // Estandarte
-        _c.drawLine(_p(84, 88), _p(84, 40), _stroke(const Color(0xFF6E4F2F), 2.2));
+        _c.drawLine(
+            _p(84, 88), _p(84, 40), _stroke(const Color(0xFF6E4F2F), 2.2));
         final flag = Path()
           ..moveTo(84 * _u, 42 * _u)
           ..lineTo(98 * _u, 46 * _u)
@@ -399,6 +577,5 @@ class _AvatarPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _AvatarPainter oldDelegate) =>
-      oldDelegate.equipped != equipped;
+  bool shouldRepaint(covariant _AvatarPainter oldDelegate) => true;
 }

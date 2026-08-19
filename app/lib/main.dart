@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'game_controller.dart';
+import 'screens/character_creator_screen.dart';
 import 'screens/map_screen.dart';
 import 'theme.dart';
 
@@ -53,6 +54,11 @@ class _ReinoDeNieblaAppState extends State<ReinoDeNieblaApp>
         builder: (context, _) {
           if (!_controller.loaded) {
             return const _SplashScreen();
+          }
+          // Primer arranque: el Espejo Mágico crea al personaje.
+          if (_controller.player.name.isEmpty) {
+            return CharacterCreatorScreen(
+                controller: _controller, firstTime: true);
           }
           return MapScreen(controller: _controller);
         },

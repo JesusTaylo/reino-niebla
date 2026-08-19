@@ -29,8 +29,14 @@ class MedalsScreen extends StatelessWidget {
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
-                      Text('Crónica del Explorador',
+                      Text(
+                          player.name.isEmpty
+                              ? 'Crónica del Explorador'
+                              : 'Crónica de ${player.name}',
                           style: fantasyTitle(18, color: RN.goldSoft)),
+                      Text(player.title,
+                          style: const TextStyle(
+                              fontSize: 12, color: RN.parchmentDim)),
                       const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,

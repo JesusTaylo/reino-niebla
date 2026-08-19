@@ -4,6 +4,7 @@ import '../game_controller.dart';
 import '../models/items.dart';
 import '../theme.dart';
 import '../widgets/avatar_view.dart';
+import 'character_creator_screen.dart';
 
 class AvatarScreen extends StatefulWidget {
   final GameController controller;
@@ -23,6 +24,16 @@ class _AvatarScreenState extends State<AvatarScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Tu Explorador', style: fantasyTitle(22)),
+        actions: [
+          IconButton(
+            tooltip: 'Espejo Mágico (editar apariencia)',
+            icon: const Text('🪞', style: TextStyle(fontSize: 20)),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) =>
+                  CharacterCreatorScreen(controller: controller),
+            )),
+          ),
+        ],
       ),
       body: ListenableBuilder(
         listenable: controller,
@@ -38,12 +49,14 @@ class _AvatarScreenState extends State<AvatarScreen> {
           return Column(
             children: [
               const SizedBox(height: 8),
-              Text(player.title, style: fantasyTitle(18, color: RN.goldSoft)),
-              Text('Nivel ${player.level}',
+              Text(player.name.isEmpty ? 'Explorador' : player.name,
+                  style: fantasyTitle(20, color: RN.goldSoft)),
+              Text('Nivel ${player.level} · ${player.title}',
                   style: const TextStyle(color: RN.parchmentDim)),
               SizedBox(
-                height: 220,
-                child: AvatarView(equipped: equipped),
+                height: 210,
+                child: AvatarView(
+                    equipped: equipped, appearance: player.appearance),
               ),
               const SizedBox(height: 8),
               // Selector de slot.

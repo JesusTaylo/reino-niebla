@@ -1,5 +1,47 @@
 import 'package:latlong2/latlong.dart';
 
+/// Apariencia física del explorador (elegida en el Espejo Mágico).
+class Appearance {
+  /// false = hombre, true = mujer.
+  bool female;
+  int skinTone; // índice en la paleta de piel
+  int hairStyle; // 0 rapado, 1 corto, 2 despeinado, 3 media melena, 4 larga, 5 chongo
+  int hairColor; // índice en la paleta de pelo
+  int facialHair; // 0 nada, 1 bigote, 2 candado, 3 barba completa
+
+  Appearance({
+    this.female = false,
+    this.skinTone = 1,
+    this.hairStyle = 1,
+    this.hairColor = 0,
+    this.facialHair = 0,
+  });
+
+  Appearance copy() => Appearance(
+        female: female,
+        skinTone: skinTone,
+        hairStyle: hairStyle,
+        hairColor: hairColor,
+        facialHair: facialHair,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'female': female,
+        'skinTone': skinTone,
+        'hairStyle': hairStyle,
+        'hairColor': hairColor,
+        'facialHair': facialHair,
+      };
+
+  factory Appearance.fromJson(Map<String, dynamic> json) => Appearance(
+        female: json['female'] == true,
+        skinTone: (json['skinTone'] as num?)?.toInt() ?? 1,
+        hairStyle: (json['hairStyle'] as num?)?.toInt() ?? 1,
+        hairColor: (json['hairColor'] as num?)?.toInt() ?? 0,
+        facialHair: (json['facialHair'] as num?)?.toInt() ?? 0,
+      );
+}
+
 /// Estado persistente del jugador.
 class PlayerState {
   int xp;
@@ -17,6 +59,10 @@ class PlayerState {
 
   bool onboardingDone;
 
+  /// Nombre elegido por el jugador ('' = aún no creó su personaje).
+  String name;
+  Appearance appearance;
+
   PlayerState({
     this.xp = 0,
     this.expeditionsDone = 0,
@@ -27,10 +73,13 @@ class PlayerState {
     Map<String, String>? equipped,
     List<LatLng>? explored,
     this.onboardingDone = false,
+    this.name = '',
+    Appearance? appearance,
   })  : medals = medals ?? [],
         inventory = inventory ?? [],
         equipped = equipped ?? {},
-        explored = explored ?? [];
+        explored = explored ?? [],
+        appearance = appearance ?? Appearance();
 
   factory PlayerState.newPlayer() {
     return PlayerState(
@@ -95,6 +144,8 @@ class PlayerState {
                 ])
             .toList(),
         'onboardingDone': onboardingDone,
+        'name': name,
+        'appearance': appearance.toJson(),
       };
 
   factory PlayerState.fromJson(Map<String, dynamic> json) {
@@ -115,6 +166,11 @@ class PlayerState {
               ))
           .toList(),
       onboardingDone: json['onboardingDone'] == true,
+      name: json['name'] as String? ?? '',
+      appearance: json['appearance'] is Map
+          ? Appearance.fromJson(
+              (json['appearance'] as Map).cast<String, dynamic>())
+          : null,
     );
   }
 }

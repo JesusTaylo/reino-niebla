@@ -432,6 +432,12 @@ class GameController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Guarda nombre/apariencia editados en el Espejo Mágico.
+  void saveProfile() {
+    Storage.save(player, activeQuest);
+    notifyListeners();
+  }
+
   void completeOnboarding() {
     player.onboardingDone = true;
     Storage.save(player, activeQuest);

@@ -498,7 +498,9 @@ class _TopHud extends StatelessWidget {
                 child: ClipOval(
                   child: Padding(
                     padding: const EdgeInsets.only(top: 3),
-                    child: AvatarView(equipped: equipped),
+                    child: AvatarView(
+                        equipped: equipped,
+                        appearance: player.appearance),
                   ),
                 ),
               ),
@@ -509,7 +511,9 @@ class _TopHud extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Nv ${player.level} · ${player.title}',
+                  player.name.isEmpty
+                      ? 'Nv ${player.level} · ${player.title}'
+                      : '${player.name} · Nv ${player.level}',
                   style: const TextStyle(
                       fontWeight: FontWeight.bold, fontSize: 12),
                   overflow: TextOverflow.ellipsis,
