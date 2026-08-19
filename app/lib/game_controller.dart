@@ -170,10 +170,72 @@ class GameController extends ChangeNotifier {
   }
 
   // ------------------------------------------------------------------
+  // Modo debug (secreto): joystick de vuelo para probar sin salir.
+  // Se activa arrastrando con 3 dedos sobre el mapa.
+  // ------------------------------------------------------------------
+
+  bool debugMode = false;
+  Timer? _simTimer;
+  DateTime? _lastSimTick;
+  double _joyVx = 0; // m/s hacia el este
+  double _joyVy = 0; // m/s hacia el norte
+
+  Future<void> toggleDebugMode() async {
+    if (debugMode) {
+      debugMode = false;
+      _simTimer?.cancel();
+      _simTimer = null;
+      _joyVx = 0;
+      _joyVy = 0;
+      await startTracking();
+    } else {
+      debugMode = true;
+      await _posSub?.cancel();
+      _posSub = null;
+      position ??= const LatLng(23.6345, -102.5528);
+      _lastSimTick = DateTime.now();
+      _simTimer = Timer.periodic(
+          const Duration(milliseconds: 600), (_) => _simStep());
+    }
+    notifyListeners();
+  }
+
+  void setJoystick(double vxMs, double vyMs) {
+    _joyVx = vxMs;
+    _joyVy = vyMs;
+  }
+
+  void _simStep() {
+    if (!debugMode) return;
+    final now = DateTime.now();
+    final dt = now.difference(_lastSimTick!).inMilliseconds / 1000.0;
+    _lastSimTick = now;
+    final p = position;
+    if (p == null || dt <= 0) return;
+    final speed = math.sqrt(_joyVx * _joyVx + _joyVy * _joyVy);
+    if (speed < 0.05) return;
+    final bearing = math.atan2(_joyVx, _joyVy) * 180 / math.pi;
+    final np = destinationPoint(p, speed * dt, bearing);
+    _onPosition(Position(
+      latitude: np.latitude,
+      longitude: np.longitude,
+      timestamp: now,
+      accuracy: 5,
+      altitude: 0,
+      altitudeAccuracy: 1,
+      heading: (bearing + 360) % 360,
+      headingAccuracy: 5,
+      speed: speed,
+      speedAccuracy: 1,
+    ));
+  }
+
+  // ------------------------------------------------------------------
   // GPS
   // ------------------------------------------------------------------
 
   Future<void> startTracking() async {
+    if (debugMode) return; // en modo debug, la posición la pone el joystick
     await _posSub?.cancel();
     final settings = _buildSettings(activeQuest != null);
     try {
@@ -344,7 +406,8 @@ class GameController extends ChangeNotifier {
     _lastTrailTime = timestamp;
 
     // Salto de GPS o velocidad de vehículo: no cuenta como caminata.
-    if (segment > 200 || speed > 4.6) {
+    // (En modo debug el joystick manda, sin filtros.)
+    if (!debugMode && (segment > 200 || speed > 4.6)) {
       return;
     }
 
@@ -466,7 +529,7 @@ class GameController extends ChangeNotifier {
     final nearGoal = haversineMeters(p, quest.goal) < 60;
     final walkedEnough = quest.walkedMeters >= quest.routeMeters * 0.88;
     final elapsed = DateTime.now().difference(quest.startedAt).inSeconds;
-    final timeOk = elapsed > quest.routeMeters / 3.5;
+    final timeOk = debugMode || elapsed > quest.routeMeters / 3.5;
 
     if (nearGoal && walkedEnough && timeOk) {
       _completeQuest(quest);

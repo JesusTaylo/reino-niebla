@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
@@ -13,6 +14,7 @@ import '../theme.dart';
 import '../util/geo.dart';
 import '../models/outposts.dart';
 import '../widgets/avatar_view.dart';
+import '../widgets/debug_joystick.dart';
 import '../widgets/fog_layer.dart';
 import '../widgets/outpost_layer.dart';
 import 'avatar_screen.dart';
@@ -38,6 +40,20 @@ class _MapScreenState extends State<MapScreen> {
   bool _centeredOnce = false;
   bool _rewardShowing = false;
   LatLng? _lastFollowed;
+
+  // Gesto secreto de 3 dedos para el modo debug.
+  final Set<int> _pointers = {};
+  DateTime _lastDebugToggle = DateTime.fromMillisecondsSinceEpoch(0);
+
+  void _onPointerDown(int pointerId) {
+    _pointers.add(pointerId);
+    if (_pointers.length >= 3 &&
+        DateTime.now().difference(_lastDebugToggle).inSeconds > 2) {
+      _lastDebugToggle = DateTime.now();
+      HapticFeedback.heavyImpact();
+      game.toggleDebugMode();
+    }
+  }
 
   GameController get game => widget.controller;
 
@@ -157,7 +173,11 @@ class _MapScreenState extends State<MapScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: ListenableBuilder(
+      body: Listener(
+        onPointerDown: (e) => _onPointerDown(e.pointer),
+        onPointerUp: (e) => _pointers.remove(e.pointer),
+        onPointerCancel: (e) => _pointers.remove(e.pointer),
+        child: ListenableBuilder(
         listenable: game,
         builder: (context, _) {
           final pos = game.position;
@@ -309,9 +329,20 @@ class _MapScreenState extends State<MapScreen> {
                   ),
                 ),
               ),
+
+              // ---- Joystick secreto de desarrollador ----
+              if (game.debugMode)
+                Positioned(
+                  left: 14,
+                  bottom: 170,
+                  child: SafeArea(
+                    child: DebugJoystick(controller: game),
+                  ),
+                ),
             ],
           );
         },
+        ),
       ),
     );
   }
