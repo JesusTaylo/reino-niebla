@@ -573,6 +573,59 @@ class _AvatarPainter extends CustomPainter {
         _c.drawPath(flag, _fill(a));
         _c.drawCircle(_p(89, 47), 1.8 * _u, _fill(b));
         break;
+      case 6: // Martillo de herrero
+        _c.save();
+        _c.translate(80 * _u, 66 * _u);
+        _c.rotate(-0.6);
+        // mango
+        _c.drawRRect(
+          RRect.fromRectAndRadius(
+              Rect.fromCenter(
+                  center: Offset(0, 4 * _u), width: 4 * _u, height: 20 * _u),
+              Radius.circular(2 * _u)),
+          _fill(b),
+        );
+        // cabeza
+        _c.drawRRect(
+          RRect.fromRectAndRadius(
+              Rect.fromCenter(
+                  center: Offset(0, -7 * _u),
+                  width: 14 * _u,
+                  height: 8 * _u),
+              Radius.circular(2 * _u)),
+          _fill(a),
+        );
+        _c.restore();
+        break;
+      case 7: // Silbato con nota
+        _c.drawRRect(
+          RRect.fromRectAndRadius(
+              Rect.fromCenter(
+                  center: _p(79, 66), width: 12 * _u, height: 6 * _u),
+              Radius.circular(3 * _u)),
+          _fill(a),
+        );
+        _c.drawCircle(_p(84, 68), 3.4 * _u, _fill(a));
+        _c.drawCircle(_p(84, 68), 1.6 * _u, _fill(b));
+        // notita musical
+        _c.drawLine(_p(88, 56), _p(88, 62), _stroke(b, 1.4));
+        _c.drawCircle(_p(87, 62.5), 1.6 * _u, _fill(b));
+        break;
+      case 8: // Pluma de escriba
+        _c.save();
+        _c.translate(80 * _u, 64 * _u);
+        _c.rotate(0.5);
+        final quill = Path()
+          ..moveTo(0, 10 * _u)
+          ..quadraticBezierTo(-5 * _u, 0, -2 * _u, -10 * _u)
+          ..quadraticBezierTo(1 * _u, -13 * _u, 3 * _u, -10 * _u)
+          ..quadraticBezierTo(4 * _u, 0, 0, 10 * _u)
+          ..close();
+        _c.drawPath(quill, _fill(a));
+        _c.drawLine(Offset(0, 10 * _u), Offset(1 * _u, 13 * _u),
+            _stroke(b, 1.6));
+        _c.restore();
+        break;
     }
   }
 

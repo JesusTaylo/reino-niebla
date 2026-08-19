@@ -329,7 +329,7 @@ class _MedalTile extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              medal.name,
+              medal.hidden && !earned ? '???' : medal.name,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontWeight: FontWeight.bold,
@@ -339,7 +339,7 @@ class _MedalTile extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              medal.desc,
+              medal.hidden ? (earned ? '· · ·' : ' ') : medal.desc,
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 10.5, color: RN.parchmentDim),
               maxLines: 2,

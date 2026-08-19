@@ -1,5 +1,7 @@
 import 'package:latlong2/latlong.dart';
 
+import 'campaign.dart';
+
 /// Apariencia física del explorador (elegida en el Espejo Mágico).
 class Appearance {
   /// false = hombre, true = mujer.
@@ -70,6 +72,9 @@ class PlayerState {
   Map<String, int> bestiary;
   int battlesWon;
 
+  /// La Campaña de la Niebla.
+  CampaignState campaign;
+
   PlayerState({
     this.xp = 0,
     this.expeditionsDone = 0,
@@ -85,13 +90,15 @@ class PlayerState {
     Map<String, int>? materials,
     Map<String, int>? bestiary,
     this.battlesWon = 0,
+    CampaignState? campaign,
   })  : medals = medals ?? [],
         inventory = inventory ?? [],
         equipped = equipped ?? {},
         explored = explored ?? [],
         appearance = appearance ?? Appearance(),
         materials = materials ?? {},
-        bestiary = bestiary ?? {};
+        bestiary = bestiary ?? {},
+        campaign = campaign ?? CampaignState();
 
   factory PlayerState.newPlayer() {
     return PlayerState(
@@ -161,6 +168,7 @@ class PlayerState {
         'materials': materials,
         'bestiary': bestiary,
         'battlesWon': battlesWon,
+        'campaign': campaign.toJson(),
       };
 
   factory PlayerState.fromJson(Map<String, dynamic> json) {
@@ -191,6 +199,10 @@ class PlayerState {
       bestiary: ((json['bestiary'] as Map?) ?? {})
           .map((k, v) => MapEntry(k.toString(), (v as num).toInt())),
       battlesWon: (json['battlesWon'] as num?)?.toInt() ?? 0,
+      campaign: json['campaign'] is Map
+          ? CampaignState.fromJson(
+              (json['campaign'] as Map).cast<String, dynamic>())
+          : null,
     );
   }
 }

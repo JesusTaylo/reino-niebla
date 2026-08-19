@@ -4,11 +4,15 @@ class Medal {
   final String desc;
   final String emoji;
 
+  /// Las medallas ocultas no muestran nombre ni pista hasta ganarse.
+  final bool hidden;
+
   const Medal({
     required this.id,
     required this.name,
     required this.desc,
     required this.emoji,
+    this.hidden = false,
   });
 }
 
@@ -108,6 +112,25 @@ const List<Medal> medalCatalog = [
     name: 'Vencedor del Guardián',
     desc: 'Derrota al Guardián de la Bruma en una ruta larga.',
     emoji: '🗿',
+  ),
+  Medal(
+    id: 'reunion',
+    name: 'Lo que la Niebla no pudo',
+    desc: 'Reúne a los que se buscaban.',
+    emoji: '🫂',
+  ),
+  Medal(
+    id: 'cronista',
+    name: 'Cronista del Reino',
+    desc: 'Escribe el final de la historia.',
+    emoji: '📜',
+  ),
+  Medal(
+    id: 'el_que_escribio',
+    name: 'El Que Escribió',
+    desc: ' ',
+    emoji: '🩸',
+    hidden: true,
   ),
 ];
 

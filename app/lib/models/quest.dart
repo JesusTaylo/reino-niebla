@@ -7,6 +7,9 @@ class Quest {
 
   /// 0 = corta, 1 = media, 2 = larga.
   final int tier;
+
+  /// 0 = expedición normal; 1..5 = misión de Himmel correspondiente.
+  final int himmelStage;
   final List<LatLng> route;
   final double routeMeters;
 
@@ -18,6 +21,7 @@ class Quest {
     required this.name,
     required this.flavor,
     required this.tier,
+    this.himmelStage = 0,
     required this.route,
     required this.routeMeters,
     this.walkedMeters = 0,
@@ -46,6 +50,7 @@ class Quest {
         'name': name,
         'flavor': flavor,
         'tier': tier,
+        'himmelStage': himmelStage,
         'routeMeters': routeMeters,
         'walkedMeters': walkedMeters,
         'startedAt': startedAt.toIso8601String(),
@@ -62,6 +67,7 @@ class Quest {
       name: json['name'] as String? ?? 'Expedición',
       flavor: json['flavor'] as String? ?? '',
       tier: (json['tier'] as num?)?.toInt() ?? 0,
+      himmelStage: (json['himmelStage'] as num?)?.toInt() ?? 0,
       route: parsePoints(json['route']),
       routeMeters: (json['routeMeters'] as num?)?.toDouble() ?? 0,
       walkedMeters: (json['walkedMeters'] as num?)?.toDouble() ?? 0,

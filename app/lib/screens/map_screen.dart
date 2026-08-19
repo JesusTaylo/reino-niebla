@@ -15,6 +15,8 @@ import '../widgets/avatar_view.dart';
 import '../widgets/fog_layer.dart';
 import 'avatar_screen.dart';
 import 'battle_screen.dart';
+import 'campaign_screen.dart';
+import 'chapter_screen.dart';
 import 'medals_screen.dart';
 import 'reward_screen.dart';
 
@@ -72,15 +74,31 @@ class _MapScreenState extends State<MapScreen> {
       }
     }
 
+    if (!mounted || _rewardShowing) return;
+
     final reward = game.pendingReward;
-    if (reward != null && !_rewardShowing && mounted) {
+    final himmelScene = game.pendingHimmelScene;
+    final chapter = game.pendingChapter;
+
+    Widget? next;
+    if (reward != null) {
+      next = RewardScreen(controller: game, reward: reward);
+    } else if (himmelScene != null) {
+      next = HimmelSceneScreen(
+          controller: game, mission: himmelScene, isIntro: false);
+    } else if (chapter != null) {
+      next = ChapterScreen(controller: game, chapter: chapter);
+    }
+
+    if (next != null) {
       _rewardShowing = true;
+      final page = next;
       Navigator.of(context)
-          .push(MaterialPageRoute(
-        builder: (_) => RewardScreen(controller: game, reward: reward),
-      ))
+          .push(MaterialPageRoute(builder: (_) => page))
           .then((_) {
         _rewardShowing = false;
+        // Encadena la siguiente escena pendiente (recompensa → Himmel → carta).
+        if (mounted) _onGameChanged();
       });
     }
   }
@@ -182,6 +200,10 @@ class _MapScreenState extends State<MapScreen> {
                     revealed: game.player.explored,
                     playerPosition: pos,
                     radiusMeters: GameController.fogRevealRadiusMeters,
+                    // El final oculto tiñe la Niebla durante 24 horas.
+                    fogColor: game.player.campaign.nieblaRoja
+                        ? const Color(0x8F2A0A10)
+                        : const Color(0x8F0A0E24),
                   ),
                   if (quest != null && quest.route.isNotEmpty)
                     PolylineLayer(
@@ -209,6 +231,17 @@ class _MapScreenState extends State<MapScreen> {
                     ),
                   MarkerLayer(
                     markers: [
+                      // El cruce "Donde se encontraron" (hilo de Himmel).
+                      if (game.player.campaign.reunionLat != null)
+                        Marker(
+                          point: LatLng(
+                            game.player.campaign.reunionLat!,
+                            game.player.campaign.reunionLng!,
+                          ),
+                          width: 34,
+                          height: 34,
+                          child: const ReunionMarker(),
+                        ),
                       if (quest != null && quest.route.isNotEmpty)
                         Marker(
                           point: quest.goal,
@@ -622,15 +655,25 @@ class _TopHud extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 2),
+            InkWell(
+              customBorder: const CircleBorder(),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => CampaignScreen(controller: controller),
+              )),
+              child: const Padding(
+                padding: EdgeInsets.all(5),
+                child: Text('📖', style: TextStyle(fontSize: 18)),
+              ),
+            ),
             InkWell(
               customBorder: const CircleBorder(),
               onTap: () => Navigator.of(context).push(MaterialPageRoute(
                 builder: (_) => MedalsScreen(controller: controller),
               )),
               child: const Padding(
-                padding: EdgeInsets.all(6),
-                child: Text('🏅', style: TextStyle(fontSize: 19)),
+                padding: EdgeInsets.all(5),
+                child: Text('🏅', style: TextStyle(fontSize: 18)),
               ),
             ),
           ],

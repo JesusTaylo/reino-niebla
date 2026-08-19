@@ -10,11 +10,13 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
 import 'models/bestiary.dart';
+import 'models/campaign.dart';
 import 'models/items.dart';
 import 'models/medals.dart';
 import 'models/player_state.dart';
 import 'models/quest.dart';
 import 'services/quest_generator.dart';
+import 'services/routing.dart';
 import 'services/storage.dart';
 import 'util/geo.dart';
 
@@ -77,6 +79,15 @@ class GameController extends ChangeNotifier {
   /// Recompensa pendiente de mostrar tras completar una expedición.
   RewardBundle? pendingReward;
 
+  /// Capítulo de la campaña listo para leerse (carta lacrada).
+  Chapter? pendingChapter;
+
+  /// Escena de misión de Himmel pendiente de mostrar.
+  HimmelMission? pendingHimmelScene;
+
+  /// Tras la misión 5: elegir Martillo de Ram o Silbato de Himmel.
+  bool reunionRelicPending = false;
+
   /// Criatura de la bruma que bloquea el camino (si hay encuentro activo).
   Enemy? pendingEncounter;
   double _metersSinceEncounterRoll = 0;
@@ -109,6 +120,7 @@ class GameController extends ChangeNotifier {
     for (final p in player.explored) {
       _exploredKeys.add(_gridKey(p));
     }
+    _checkCampaign();
     loaded = true;
     notifyListeners();
     await refreshPermissions();
@@ -312,7 +324,10 @@ class GameController extends ChangeNotifier {
     }
 
     final levelBefore = player.level;
-    player.xp += enemy.xp;
+    // La Niebla rojiza (final oculto) duplica la experiencia 24 h.
+    final gainedXp =
+        player.campaign.nieblaRoja ? enemy.xp * 2 : enemy.xp;
+    player.xp += gainedXp;
     player.battlesWon += 1;
     player.bestiary[enemy.spec.id] =
         (player.bestiary[enemy.spec.id] ?? 0) + 1;
@@ -343,11 +358,12 @@ class GameController extends ChangeNotifier {
     final newMedals = _checkMedals();
     final leveledUp = player.level > levelBefore;
 
+    _checkCampaign();
     Storage.save(player, activeQuest);
     notifyListeners();
     return BattleSpoils(
       won: true,
-      xp: enemy.xp,
+      xp: gainedXp,
       materialId: enemy.spec.materialId,
       materialCount: count,
       gear: gear,
@@ -408,6 +424,16 @@ class GameController extends ChangeNotifier {
     _lastTrailTime = null;
     pendingEncounter = null;
 
+    // Condiciones de campaña que dependen del tipo de expedición.
+    final hour = DateTime.now().hour;
+    if (hour >= 21 || hour < 4) player.campaign.nocturnaDone = true;
+    if (quest.tier >= 1) player.campaign.mediaLargaDone = true;
+
+    if (quest.himmelStage > 0) {
+      _completeHimmelQuest(quest);
+      return;
+    }
+
     final levelBefore = player.level;
 
     // XP por distancia real caminada.
@@ -450,6 +476,7 @@ class GameController extends ChangeNotifier {
       leveledUp: levelAfter > levelBefore,
     );
 
+    _checkCampaign();
     Storage.save(player, activeQuest);
     startTracking();
     notifyListeners();
@@ -457,6 +484,150 @@ class GameController extends ChangeNotifier {
 
   void clearPendingReward() {
     pendingReward = null;
+    notifyListeners();
+  }
+
+  // ------------------------------------------------------------------
+  // La Campaña de la Niebla
+  // ------------------------------------------------------------------
+
+  /// Revisa si el siguiente capítulo sin leer ya cumple su condición.
+  void _checkCampaign() {
+    if (pendingChapter != null) return;
+    final read = player.campaign.read;
+    for (final ch in campaignChapters) {
+      if (read.contains(ch.id)) continue;
+      if (ch.isMet(player, player.campaign)) {
+        pendingChapter = ch;
+      }
+      break; // solo evaluamos el siguiente capítulo en orden
+    }
+  }
+
+  /// Marca un capítulo como leído y otorga sus recompensas.
+  void markChapterRead(Chapter chapter) {
+    if (player.campaign.read.contains(chapter.id)) return;
+    player.campaign.read.add(chapter.id);
+    player.xp += chapter.xp;
+    recordChapterMarks(chapter.id, player, player.campaign);
+    if (chapter.id == 'c9' && !player.inventory.contains('pluma_anselmo')) {
+      player.inventory.add('pluma_anselmo');
+    }
+    if (pendingChapter?.id == chapter.id) pendingChapter = null;
+    _checkCampaign();
+    Storage.save(player, activeQuest);
+    notifyListeners();
+  }
+
+  /// Decisión ① (capítulo 8): 'destruir' o 'conservar'.
+  void applyDecision1(String choice) {
+    player.campaign.decision1 = choice;
+    Storage.save(player, activeQuest);
+    notifyListeners();
+  }
+
+  /// El final (capítulo 12): 'verdad', 'silencio' o 'nombre'.
+  void applyEnding(String choice) {
+    final c = player.campaign;
+    c.ending = choice;
+    if (choice == 'nombre') {
+      c.endingAt = DateTime.now();
+      if (!player.medals.contains('el_que_escribio')) {
+        player.medals.add('el_que_escribio');
+      }
+    } else {
+      if (!player.medals.contains('cronista')) {
+        player.medals.add('cronista');
+      }
+    }
+    Storage.save(player, activeQuest);
+    notifyListeners();
+  }
+
+  // ---- Hilo de Himmel ----
+
+  /// La siguiente misión de Himmel disponible, o null.
+  HimmelMission? himmelAvailable() {
+    final c = player.campaign;
+    if (c.himmelLost) return null;
+    if (c.himmelStage >= 5) return null;
+    final next = himmelMissions[c.himmelStage];
+    final required = himmelRequiredChapter(next.stage);
+    if (!c.read.contains(required)) return null;
+    return next;
+  }
+
+  /// Inicia una misión de Himmel. Devuelve false si no se pudo generar ruta.
+  Future<bool> startHimmelMission(HimmelMission mission) async {
+    if (mission.tier < 0) {
+      // Sin caminata: la escena ocurre de inmediato.
+      player.campaign.himmelStage = mission.stage;
+      player.xp += mission.xp;
+      pendingHimmelScene = mission;
+      Storage.save(player, activeQuest);
+      notifyListeners();
+      return true;
+    }
+    final p = position;
+    if (p == null) return false;
+    final target = QuestGenerator.targetMeters[mission.tier.clamp(0, 2)];
+    final route = await RoutingService.generateLoop(p, target);
+    if (route == null) return false;
+    final quest = Quest(
+      name: '🏹 ${mission.title}',
+      flavor: 'Misión de Himmel',
+      tier: mission.tier,
+      himmelStage: mission.stage,
+      route: route.points,
+      routeMeters: route.meters,
+    );
+    await acceptQuest(quest);
+    return true;
+  }
+
+  void _completeHimmelQuest(Quest quest) {
+    final mission = himmelMissions[quest.himmelStage - 1];
+    player.expeditionsDone += 1;
+    player.totalMeters += quest.walkedMeters;
+    player.xp += mission.xp;
+    player.campaign.himmelStage = mission.stage;
+
+    if (mission.stage == 5) {
+      if (!player.medals.contains('reunion')) {
+        player.medals.add('reunion');
+      }
+      // El cruce "Donde se encontraron": punto medio de la ruta.
+      if (quest.route.isNotEmpty) {
+        final mid = quest.route[quest.route.length ~/ 2];
+        player.campaign.reunionLat = mid.latitude;
+        player.campaign.reunionLng = mid.longitude;
+      }
+      reunionRelicPending = true;
+    }
+
+    pendingHimmelScene = mission;
+    _checkMedals();
+    _checkCampaign();
+    Storage.save(player, activeQuest);
+    startTracking();
+    notifyListeners();
+  }
+
+  /// Elección de reliquia tras el reencuentro.
+  void chooseReunionRelic(String itemId) {
+    if (!reunionRelicPending) return;
+    if (itemId == 'martillo_ram' || itemId == 'silbato_himmel') {
+      if (!player.inventory.contains(itemId)) {
+        player.inventory.add(itemId);
+      }
+    }
+    reunionRelicPending = false;
+    Storage.save(player, activeQuest);
+    notifyListeners();
+  }
+
+  void clearHimmelScene() {
+    pendingHimmelScene = null;
     notifyListeners();
   }
 
