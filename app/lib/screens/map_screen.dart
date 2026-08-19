@@ -184,10 +184,16 @@ class _MapScreenState extends State<MapScreen> {
                   if (quest != null && quest.route.isNotEmpty)
                     PolylineLayer(
                       polylines: [
+                        // Contorno oscuro para que la ruta resalte sobre todo.
+                        Polyline(
+                          points: quest.route,
+                          strokeWidth: 9,
+                          color: const Color(0xB30D1026),
+                        ),
                         Polyline(
                           points: quest.route,
                           strokeWidth: 5,
-                          color: RN.gold.withValues(alpha: 0.9),
+                          color: RN.gold.withValues(alpha: 0.95),
                           pattern: StrokePattern.dashed(
                               segments: const [14.0, 10.0]),
                         ),
@@ -326,9 +332,8 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
 
-    final remaining = game.position == null
-        ? null
-        : haversineMeters(game.position!, quest.goal);
+    final remaining =
+        math.max(0.0, quest.routeMeters - quest.walkedMeters);
 
     return Card(
       child: Padding(
@@ -362,8 +367,12 @@ class _MapScreenState extends State<MapScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              '${formatKm(quest.walkedMeters)} de ${formatKm(quest.routeMeters)}'
-              '${remaining != null ? '  ·  meta a ${formatKm(remaining)}' : ''}',
+              quest.walkedMeters < 30
+                  ? '${quest.tierLabel} · ${formatKm(quest.routeMeters)} · '
+                      'ruta circular: sigue el camino dorado 🥾'
+                  : '${formatKm(quest.walkedMeters)} de '
+                      '${formatKm(quest.routeMeters)}  ·  '
+                      'faltan ${formatKm(remaining)}',
               style: const TextStyle(fontSize: 13, color: RN.parchmentDim),
             ),
           ],

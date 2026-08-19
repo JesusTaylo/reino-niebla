@@ -58,7 +58,10 @@ class QuestGenerator {
   static String randomName() {
     final t = _templates[_rng.nextInt(_templates.length)];
     final p = _places[_rng.nextInt(_places.length)];
-    return t.replaceAll('{n}', p);
+    return t
+        .replaceAll('{n}', p)
+        .replaceAll(' de el ', ' del ')
+        .replaceAll(' a el ', ' al ');
   }
 
   static String randomFlavor() => _flavors[_rng.nextInt(_flavors.length)];
