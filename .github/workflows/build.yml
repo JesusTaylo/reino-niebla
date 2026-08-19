@@ -1,0 +1,80 @@
+name: Compilar APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Instalar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Instalar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.35.0'
+          channel: stable
+
+      - name: Crear cascarón del proyecto
+        run: |
+          flutter create --platforms android --org dev.jesus --project-name reino_niebla build_app
+
+      - name: Integrar el código del juego
+        run: |
+          rm -rf build_app/lib
+          cp -r app/lib build_app/lib
+          cp app/pubspec.yaml build_app/pubspec.yaml
+          python3 scripts/prepare.py build_app
+
+      - name: Analizar código
+        run: |
+          set -o pipefail
+          cd build_app
+          flutter pub get 2>&1 | tee ../pubget.log
+          flutter analyze --no-fatal-infos --no-fatal-warnings 2>&1 | tee ../analyze.log
+
+      - name: Compilar APK
+        run: |
+          set -o pipefail
+          cd build_app
+          flutter build apk --release --split-per-abi 2>&1 | tee ../build.log
+
+      - name: Preparar archivos
+        run: |
+          mkdir -p out
+          cp build_app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk out/ReinoDeNiebla-arm64.apk
+          cp build_app/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk out/ReinoDeNiebla-arm32.apk || true
+
+      - name: Publicar release con el APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: 'Reino de Niebla — APK más reciente'
+          body: |
+            📲 Instala **ReinoDeNiebla-arm64.apk** en tu teléfono Android.
+            (Si tu teléfono es muy antiguo y no lo acepta, prueba el arm32.)
+          files: out/*.apk
+
+      - name: Publicar diagnóstico si algo falló
+        if: failure()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: diagnostico
+          name: 'Diagnóstico de compilación (para Claude)'
+          body: 'Registros del último intento de compilación fallido.'
+          files: |
+            pubget.log
+            analyze.log
+            build.log
