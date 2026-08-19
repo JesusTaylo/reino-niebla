@@ -93,16 +93,19 @@ List<Outpost> outpostsInArea(
 }) {
   final result = <Outpost>[];
   final latCell = outpostCellMeters / 111320.0;
-  final midLat = (south + north) / 2;
-  final lngCell = outpostCellMeters /
-      (111320.0 * math.cos(midLat * math.pi / 180).abs().clamp(0.2, 1.0));
 
   final iy0 = (south / latCell).floor();
   final iy1 = (north / latCell).ceil();
-  final ix0 = (west / lngCell).floor();
-  final ix1 = (east / lngCell).ceil();
 
   for (var iy = iy0; iy <= iy1; iy++) {
+    // El ancho de celda se ancla a la latitud DE LA FILA (fija en el
+    // mundo), nunca a la de la pantalla: así los puestos jamás se mueven.
+    final rowLat = iy * latCell;
+    final lngCell = outpostCellMeters /
+        (111320.0 * math.cos(rowLat * math.pi / 180).abs().clamp(0.2, 1.0));
+    final ix0 = (west / lngCell).floor();
+    final ix1 = (east / lngCell).ceil();
+
     for (var ix = ix0; ix <= ix1; ix++) {
       final h = _hash(ix, iy);
       // ~30% de las celdas no tienen puesto: respiro entre estructuras.

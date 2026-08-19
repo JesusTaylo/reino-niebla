@@ -111,7 +111,7 @@ class GameController extends ChangeNotifier {
 
   final _rng = math.Random();
 
-  static const double fogRevealRadiusMeters = 55;
+  static const double fogRevealRadiusMeters = 42;
   static const double _exploredMinGapMeters = 25;
 
   // ------------------------------------------------------------------

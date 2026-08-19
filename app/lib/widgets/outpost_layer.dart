@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -22,13 +24,20 @@ class OutpostLayer extends StatelessWidget {
     final b = camera.visibleBounds;
     final outposts = outpostsInArea(b.south, b.west, b.north, b.east);
 
+    // Los edificios se anclan al terreno: encogen al alejar el zoom,
+    // como estructuras reales, en vez de quedarse gigantes en pantalla.
+    final scale =
+        math.pow(2.0, camera.zoom - 16.5).toDouble().clamp(0.38, 1.15);
+    final w = 46 * scale;
+    final h = 52 * scale;
+
     return MarkerLayer(
       markers: [
         for (final o in outposts)
           Marker(
             point: o.pos,
-            width: 46,
-            height: 52,
+            width: w,
+            height: h,
             alignment: Alignment.topCenter,
             child: GestureDetector(
               onTap: () => _showSheet(context, o),

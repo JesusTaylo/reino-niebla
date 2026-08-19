@@ -27,9 +27,9 @@ class FogLayer extends StatelessWidget {
     required this.today,
     this.staleAfterDays = 10,
     required this.playerPosition,
-    this.radiusMeters = 55,
-    // Niebla translúcida: el mapa sin explorar se ve oscurecido, no tapado.
-    this.fogColor = const Color(0x8F0A0E24),
+    this.radiusMeters = 42,
+    // Niebla densa: lo no explorado apenas se intuye — descubrir es el juego.
+    this.fogColor = const Color(0xBE0A0E24),
   });
 
   @override
@@ -88,7 +88,7 @@ class _FogPainter extends CustomPainter {
     // Si el zoom está muy lejos, los agujeros serían subpíxel: pintamos
     // niebla ligera uniforme y listo.
     if (pixRadius < 1.5) {
-      canvas.drawRect(rect, Paint()..color = fogColor.withValues(alpha: 0.30));
+      canvas.drawRect(rect, Paint()..color = fogColor.withValues(alpha: 0.45));
       return;
     }
 
@@ -129,13 +129,13 @@ class _FogPainter extends CustomPainter {
     final player = playerPosition;
     if (player != null) {
       final p = _project(player);
-      canvas.drawCircle(p, pixRadius * 3.0, clear);
+      canvas.drawCircle(p, pixRadius * 2.2, clear);
       for (var i = 1; i <= 3; i++) {
         final ring = Paint()
           ..blendMode = BlendMode.clear
           ..isAntiAlias = true
           ..color = Colors.white.withValues(alpha: 1.0 - i * 0.25);
-        canvas.drawCircle(p, pixRadius * (3.0 + i * 0.22), ring);
+        canvas.drawCircle(p, pixRadius * (2.2 + i * 0.18), ring);
       }
     }
 

@@ -227,8 +227,8 @@ class _MapScreenState extends State<MapScreen> {
                     radiusMeters: GameController.fogRevealRadiusMeters,
                     // El final oculto tiñe la Niebla durante 24 horas.
                     fogColor: game.player.campaign.nieblaRoja
-                        ? const Color(0x8F2A0A10)
-                        : const Color(0x8F0A0E24),
+                        ? const Color(0xBE2A0A10)
+                        : const Color(0xBE0A0E24),
                   ),
                   // Puestos de avanzada (edificios 2.5D).
                   OutpostLayer(controller: game),
