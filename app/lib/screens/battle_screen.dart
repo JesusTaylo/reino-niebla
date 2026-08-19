@@ -8,6 +8,7 @@ import '../models/bestiary.dart';
 import '../models/items.dart';
 import '../theme.dart';
 import '../widgets/avatar_view.dart';
+import '../widgets/enemy_sprite.dart';
 
 /// Combate por turnos contra una criatura de la bruma.
 class BattleScreen extends StatefulWidget {
@@ -50,7 +51,7 @@ class _BattleScreenState extends State<BattleScreen>
     _playerMaxHp = game.maxHp;
     _playerHp = _playerMaxHp;
     _enemyHp = enemy.maxHp;
-    _log = '¡${enemy.spec.name} (Nv ${enemy.level}) te cierra el paso!';
+    _log = '¡${enemy.displayName} (Nv ${enemy.level}) te cierra el paso!';
     _shake = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -87,7 +88,7 @@ class _BattleScreenState extends State<BattleScreen>
     _shake.forward(from: 0);
     setState(() {
       _log = '$text${crit ? '💥 ¡CRÍTICO! ' : ''}'
-          'Golpeas a ${enemy.spec.name} por $dmg de daño.';
+          'Golpeas a ${enemy.displayName} por $dmg de daño.';
     });
     _afterPlayerAction();
   }
@@ -112,7 +113,7 @@ class _BattleScreenState extends State<BattleScreen>
       return;
     }
     setState(() {
-      _log = '🏃 ¡Intentas huir pero ${enemy.spec.name} te alcanza!';
+      _log = '🏃 ¡Intentas huir pero ${enemy.displayName} te alcanza!';
     });
     _afterPlayerAction(skipVictoryCheck: true);
   }
@@ -139,7 +140,7 @@ class _BattleScreenState extends State<BattleScreen>
     HapticFeedback.lightImpact();
     _shake.forward(from: 0);
     setState(() {
-      _log = '${enemy.spec.emoji} ${enemy.spec.name} te golpea por $dmg.';
+      _log = '${enemy.spec.emoji} ${enemy.displayName} te golpea por $dmg.';
       if (_playerHp <= 0) {
         _phase = _Phase.defeat;
         _log = 'La bruma te envuelve… despiertas en el camino, ileso. '
@@ -156,7 +157,7 @@ class _BattleScreenState extends State<BattleScreen>
     setState(() {
       _phase = _Phase.victory;
       _spoils = game.applyBattleResult(enemy, true);
-      _log = '🎉 ¡${enemy.spec.name} se disuelve en la niebla!';
+      _log = '🎉 ¡${enemy.displayName} se disuelve en la niebla!';
     });
   }
 
@@ -178,7 +179,7 @@ class _BattleScreenState extends State<BattleScreen>
             child: Column(
               children: [
                 // ---- Enemigo ----
-                _hpBar(enemy.spec.name, 'Nv ${enemy.level}', _enemyHp,
+                _hpBar(enemy.displayName, 'Nv ${enemy.level}', _enemyHp,
                     enemy.maxHp, RN.danger),
                 const SizedBox(height: 10),
                 Expanded(
@@ -195,10 +196,9 @@ class _BattleScreenState extends State<BattleScreen>
                       child: AnimatedScale(
                         scale: _enemyHp <= 0 ? 0.0 : 1.0,
                         duration: const Duration(milliseconds: 500),
-                        child: Text(
-                          enemy.spec.emoji,
-                          style: TextStyle(
-                              fontSize: enemy.spec.isBoss ? 110 : 84),
+                        child: EnemySprite(
+                          enemy: enemy,
+                          size: enemy.spec.isBoss ? 220 : 170,
                         ),
                       ),
                     ),

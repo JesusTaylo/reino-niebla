@@ -15,6 +15,7 @@ import '../util/geo.dart';
 import '../models/outposts.dart';
 import '../widgets/avatar_view.dart';
 import '../widgets/debug_joystick.dart';
+import '../widgets/enemy_sprite.dart';
 import '../widgets/fog_layer.dart';
 import '../widgets/outpost_layer.dart';
 import 'avatar_screen.dart';
@@ -516,8 +517,7 @@ class _MapScreenState extends State<MapScreen> {
         children: [
           Row(
             children: [
-              Text(enemy.spec.emoji,
-                  style: TextStyle(fontSize: isBoss ? 44 : 36)),
+              EnemySprite(enemy: enemy, size: isBoss ? 64 : 52),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -525,8 +525,8 @@ class _MapScreenState extends State<MapScreen> {
                   children: [
                     Text(
                       isBoss
-                          ? '¡${enemy.spec.name} despierta! (Nv ${enemy.level})'
-                          : '¡${enemy.spec.name} (Nv ${enemy.level}) bloquea tu senda!',
+                          ? '¡${enemy.displayName} despierta! (Nv ${enemy.level})'
+                          : '¡${enemy.displayName} (Nv ${enemy.level}) bloquea tu senda!',
                       style: fantasyTitle(14.5,
                           color: isBoss ? RN.danger : RN.goldSoft),
                     ),

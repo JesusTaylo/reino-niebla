@@ -35,6 +35,13 @@ with open(manifest_path, "w") as f:
     f.write(manifest)
 print("Manifest actualizado.")
 
+# Assets del juego (sprites de criaturas, etc.)
+assets_src = os.path.join(repo, "app", "assets")
+if os.path.isdir(assets_src):
+    shutil.copytree(assets_src, os.path.join(project, "assets"),
+                    dirs_exist_ok=True)
+    print("Assets copiados.")
+
 # Íconos
 res_src = os.path.join(repo, "android_res")
 res_dst = os.path.join(project, "android", "app", "src", "main", "res")

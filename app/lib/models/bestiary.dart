@@ -138,6 +138,24 @@ EnemySpec? enemyById(String id) {
   return null;
 }
 
+/// Nombres de las variantes élite de cada especie (índices 0-2).
+const Map<String, List<String>> enemyVariantNames = {
+  'slime': ['Slime de Niebla', 'Slime Escarchado', 'Slime Abisal'],
+  'lobo': ['Lobo de Bruma', 'Lobo Alfa', 'Lobo Espectral'],
+  'esqueleto': ['Esqueleto Errante', 'Capitán Caído', 'Esqueleto Rúnico'],
+  'duende': ['Duende Ladrón', 'Duende Saqueador', 'Duende Chamán'],
+  'espectro': [
+    'Espectro de la Niebla',
+    'Espectro del Lamento',
+    'Espectro Ancestral'
+  ],
+  'guardian': [
+    'Guardián de la Bruma',
+    'Guardián Despierto',
+    'Guardián Ancestral'
+  ],
+};
+
 /// Una criatura concreta, escalada al nivel del jugador.
 class Enemy {
   final EnemySpec spec;
@@ -147,6 +165,19 @@ class Enemy {
   final int xp;
 
   Enemy(this.spec, this.level, this.maxHp, this.atk, this.xp);
+
+  /// Variante visual según el nivel (0 base, 1 y 2 élites).
+  int get variantIndex => spec.isBoss
+      ? (level >= 10 ? 2 : (level >= 5 ? 1 : 0))
+      : (level >= 8 ? 2 : (level >= 4 ? 1 : 0));
+
+  /// Nombre mostrado (las élites tienen nombre propio).
+  String get displayName =>
+      enemyVariantNames[spec.id]?[variantIndex] ?? spec.name;
+
+  /// Ruta del sprite correspondiente.
+  String get spritePath =>
+      'assets/enemies/${spec.id}_$variantIndex.png';
 
   factory Enemy.scaled(EnemySpec spec, int playerLevel) {
     final l = math.max(1, playerLevel);

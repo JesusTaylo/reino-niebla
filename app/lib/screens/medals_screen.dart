@@ -92,9 +92,16 @@ class MedalsScreen extends StatelessWidget {
                                     (player.bestiary[e.id] ?? 0) > 0
                                         ? 1
                                         : 0.35,
-                                child: Text(e.emoji,
-                                    style:
-                                        const TextStyle(fontSize: 20)),
+                                child: Image.asset(
+                                  'assets/enemies/${e.id}_0.png',
+                                  width: 34,
+                                  height: 34,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (c, err, st) => Text(
+                                      e.emoji,
+                                      style: const TextStyle(
+                                          fontSize: 20)),
+                                ),
                               ),
                               const SizedBox(width: 10),
                               Expanded(
