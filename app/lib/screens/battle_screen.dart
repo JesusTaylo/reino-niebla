@@ -230,9 +230,13 @@ class _BattleScreenState extends State<BattleScreen>
                     SizedBox(
                       width: 52,
                       height: 62,
-                      child: AvatarView(
-                        equipped: equipped,
-                        appearance: game.player.appearance,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: AvatarView(
+                          equipped: equipped,
+                          appearance: game.player.appearance,
+                          bust: true,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 10),

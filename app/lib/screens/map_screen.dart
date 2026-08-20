@@ -658,12 +658,10 @@ class _TopHud extends StatelessWidget {
                   border: Border.all(color: RN.gold, width: 1.5),
                 ),
                 child: ClipOval(
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 3),
-                    child: AvatarView(
-                        equipped: equipped,
-                        appearance: player.appearance),
-                  ),
+                  child: AvatarView(
+                      equipped: equipped,
+                      appearance: player.appearance,
+                      bust: true),
                 ),
               ),
             ),
